@@ -94,7 +94,6 @@ extern int cgf_notifier_call_chain(unsigned long val, void *v);
 extern int cgf_attach_task_group(struct cgroup *cgrp, u64 pid);
 #endif
 #endif
-
 extern struct file_system_type cgroup_fs_type;
 extern struct cgroup_root cgrp_dfl_root;
 extern struct ext_css_set init_ext_css_set;
