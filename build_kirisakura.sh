@@ -14,18 +14,18 @@ echo
 mkdir -p out_cfi
 export ARCH=arm64
 export SUBARCH=arm64
-BASE_PATH=/home/miles/Android_Build/Clang_Google/linux-x86
-BASE_PATH_GCC=/home/miles/Android_Build/GCC_Google_Arm64
-BASE_PATH_GCC_32=/home/miles/Android_Build/GCC_Google_Arm32
-export DTC_EXT=/home/miles/Downloads/DU_Tools/dtc-aosp
+BASE_PATH=/home/sibindev9746_gmail_com/Android_Build/Clang_Google/linux-x86/clang-r450784e
+BASE_PATH_GCC=/home/sibindev9746_gmail_com/Android_Build/GCC_Google_Arm64
+BASE_PATH_GCC_32=/home/sibindev9746_gmail_com/Android_Build/GCC_Google_Arm32
+export DTC_EXT=/usr/bin/dtc
 export CLANG_PATH=$BASE_PATH/clang-r450784e/bin
 export PATH=${CLANG_PATH}:${PATH}
 
 export CLANG_TRIPLE=aarch64-linux-gnu-
 
-export CROSS_COMPILE=$BASE_PATH_GCC/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-export CROSS_COMPILE_COMPAT=$BASE_PATH_GCC_32/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-export CROSS_COMPILE_ARM32=$BASE_PATH_GCC_32/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+export CROSS_COMPILE=$BASE_PATH_GCC/bin/aarch64-linux-android-
+export CROSS_COMPILE_COMPAT=$BASE_PATH_GCC_32/bin/arm-linux-androideabi-
+export CROSS_COMPILE_ARM32=$BASE_PATH_GCC_32/bin/arm-linux-androideabi-
 
 #export CROSS_COMPILE=$BASE_PATH/gas-linux-x86/aarch64-linux-gnu-
 #export CROSS_COMPILE_ARM32=$BASE_PATH/gas-linux-x86/arm-linux-gnueabi-
@@ -71,5 +71,5 @@ echo "Build The Good Stuff"
 echo 
 
 #make CC=$CLANG_CC LD=$CLANG_LD LDLTO=$CLANG_LD AR=$CLANG_AR NM=$CLANG_NM OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip O=out_cfi -j24
-make LLVM=1 CC=$CLANG_CC LD=$CLANG_LD AR=$CLANG_AR STRIP=$CLANG_STRIP OBJCOPY=$CLANG_OC NM=$CLANG_NM OBJDUMP=$CLANG_OD OBJSIZE=$CLANG_OS READELF=$CLANG_RE HOSTCC=$CLANG_CC HOSTCXX=$CLANG_CCXX HOSTAR=$CLANG_AR HOSTLD=$CLANG_LD O=out_cfi -j24
-#make O=out_cfi -j24
+make LLVM=1 CC=$CLANG_CC LD=$CLANG_LD AR=$CLANG_AR STRIP=$CLANG_STRIP OBJCOPY=$CLANG_OC NM=$CLANG_NM OBJDUMP=$CLANG_OD OBJSIZE=$CLANG_OS READELF=$CLANG_RE HOSTCC=$CLANG_CC HOSTCXX=$CLANG_CCXX HOSTAR=$CLANG_AR HOSTLD=$CLANG_LD O=out_cfi -j$(nproc)
+#make O=out_cfi -j$(nproc)
