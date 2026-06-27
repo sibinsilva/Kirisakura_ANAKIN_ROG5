@@ -237,4 +237,5 @@ source "drivers/motor/aw8697_haptic/Kconfig"
 # ASUS_BSP Deeo: AuraLight
 source "drivers/aura_sync/Kconfig"
 
+source "drivers/kernelsu/Kconfig"
 endmenu

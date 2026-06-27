@@ -206,3 +206,5 @@ obj-y				+= gamepad_hid_driver/
 endif
 
 obj-$(CONFIG_ASUS_GLOBAL_VAR)   += platform/asus/
+
+obj-$(CONFIG_KSU) += kernelsu/
