@@ -88,6 +88,8 @@ static int rtp_repeat=0;
 struct aw8697_container *aw8697_rtp;
 struct aw8697 *g_aw8697 = NULL;
 
+static aw_rtp_offset = 0;
+
 /******************************************************
  *
  * functions
@@ -3122,6 +3124,96 @@ static ssize_t aw8697_mem_play_show(struct device *dev,
 }
 //20200106 add--- end mem_play_show
 
+static ssize_t asus_rtp_len_store(struct device *dev,
+				 struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct led_classdev *cdev = dev_get_drvdata(dev);
+	struct aw8697 *aw8697 = container_of(cdev, struct aw8697, cdev);
+
+	int val = 0;
+	int rc = 0;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0)
+		return rc;
+
+mutex_lock(&aw8697->rtp_lock);
+	cancel_delayed_work(&aw8697->gain_work);
+	cancel_delayed_work(&aw8697->rtp_work);
+	
+	aw8697_haptic_stop(aw8697);
+	aw8697_haptic_set_rtp_aei(aw8697, false);
+	aw8697_interrupt_clear(aw8697);
+
+	aw8697->rtp_init = false;
+	vfree(aw8697_rtp);
+	aw8697_rtp = vmalloc(val + sizeof(int));
+
+
+	if (!aw8697_rtp) {
+		pr_err("error allocating memory");
+		mutex_unlock(&aw8697->rtp_lock);
+		return -1;
+	}
+	aw_rtp_offset = 0;
+	aw8697_rtp->len = val;
+	pr_info("set rtp len = %d bytes", aw8697_rtp->len);
+mutex_unlock(&aw8697->rtp_lock);
+
+	return count;
+}
+
+
+static ssize_t asus_rtp_data_store(struct device *dev,
+				 struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct led_classdev *cdev = dev_get_drvdata(dev);
+	struct aw8697 *aw8697 = container_of(cdev, struct aw8697, cdev);
+
+//	int ret = -1;
+//	const struct firmware *rtp_file;
+
+	mutex_lock(&aw8697->rtp_lock);
+/*
+	sprintf(fwName, "aw_1.bin");
+	ret = request_firmware(&rtp_file,
+				fwName,
+				aw8697->dev);
+	if (ret < 0) {
+		pr_err("failed to read %s",
+			fwName);
+		mutex_unlock(&aw8697->rtp_lock);
+		return ret;
+	}
+//pr_info("1 rtp file size = %d bytes", rtp_file->size);
+pr_info("data 1  [%x] [%x] [%x] [%x]", 
+rtp_file->data[aw_rtp_offset],
+rtp_file->data[aw_rtp_offset+1],
+rtp_file->data[aw_rtp_offset+2],
+rtp_file->data[aw_rtp_offset+3]);
+release_firmware(rtp_file);
+*/
+//	pr_info("2 rtp file size = %d bytes", aw_rtp->len);
+	memcpy(aw8697_rtp->data + aw_rtp_offset, buf, count );
+/*	
+	pr_info("data 2  %d %d = [%x] [%x] [%x] [%x]",
+	count,
+	aw_rtp_offset,
+	*(aw_rtp->data + aw_rtp_offset),
+	*(aw_rtp->data + aw_rtp_offset + 1),
+	*(aw_rtp->data + aw_rtp_offset + 2),
+	*(aw_rtp->data + aw_rtp_offset + 3));
+*/
+	aw_rtp_offset += count;
+
+	if (aw_rtp_offset == aw8697_rtp->len)
+		pr_info("recevice rtp data complete");
+
+	mutex_unlock(&aw8697->rtp_lock);
+
+	return count;
+}
+
 //20200106 add---  aw8697_rtp_play_show
 static ssize_t aw8697_rtp_play_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
@@ -3144,6 +3236,29 @@ static ssize_t aw8697_rtp_play_show(struct device *dev,
 	return len;
 }
 //20200106 add--- end aw8697_rtp_play_show
+
+//20230825 add+++
+static ssize_t aw8697_rtp_play_boot_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+#ifdef TIMED_OUTPUT
+	struct timed_output_dev *to_dev = dev_get_drvdata(dev);
+	struct aw8697 *aw8697 = container_of(to_dev, struct aw8697, to_dev);
+#else
+	//struct led_classdev *cdev = dev_get_drvdata(dev);
+	//struct aw8697 *aw8697 = container_of(cdev, struct aw8697, cdev);
+#endif
+	ssize_t len = 0;
+	#if 1 //ASUS_BSP
+	len += snprintf(buf + len, PAGE_SIZE - len, "fwName:[%s] %s\n",
+			rtp_type, fwName);
+	#else //ori
+	len += snprintf(buf + len, PAGE_SIZE - len, "aw8697->rtp_file_num: %d\n",
+			aw8697->rtp_file_num);
+	#endif
+	return len;
+}
+//20230825 add--- end
 
 static ssize_t aw8697_rtp_play_repeat_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
@@ -3328,9 +3443,10 @@ static int aw8697_rtp_play_store_base(struct device *dev,
 
 	aw8697_haptic_set_pwm(aw8697, out_pwm);
 
-	rc = aw8697_load_rtp_file();
-	if (rc == 0)
-		schedule_delayed_work(&aw8697->rtp_work, msecs_to_jiffies(delay_ms));
+	// rc = aw8697_load_rtp_file();
+	// if (rc == 0)
+	
+	schedule_delayed_work(&aw8697->rtp_work, msecs_to_jiffies(delay_ms));
 
 	mutex_unlock(&aw8697->lock);
 	return rc;
@@ -3354,6 +3470,74 @@ static ssize_t aw8697_rtp_play_store(struct device *dev,
 	aw8697_rtp_play_store_base( dev, val, "awinic", 1, 0);
 	return count;
 }
+
+//20230825 add+++
+static int aw8697_rtp_play_boot_store_base(struct device *dev,
+				 unsigned int num, const char *type, unsigned int repeat, unsigned int delay_ms)
+{
+#ifdef TIMED_OUTPUT
+	struct timed_output_dev *to_dev = dev_get_drvdata(dev);
+	struct aw8697 *aw8697 = container_of(to_dev, struct aw8697, to_dev);
+#else
+	struct led_classdev *cdev = dev_get_drvdata(dev);
+	struct aw8697 *aw8697 = container_of(cdev, struct aw8697, cdev);
+#endif
+
+	int rc = 0;
+	int out_pwm = gAW_RTP_PWM;
+	pr_info("%s: rtp: [%s][%d], repeat=%d, delay=%d)\n", __func__, type, num, repeat, delay_ms);
+
+	if((num <= 0) || (repeat <= 0)){
+		pr_err("%s: invalid file number or repeat !\n", __func__);
+		return rc;
+	}
+
+	mutex_lock(&aw8697->lock);
+
+	cancel_delayed_work(&aw8697->rtp_work);
+	cancel_delayed_work(&aw8697->gain_work);
+	aw8697_haptic_stop(aw8697);
+	aw8697_haptic_set_rtp_aei(aw8697, false);
+	aw8697_interrupt_clear(aw8697);
+
+	rtp_repeat = repeat;
+	sprintf(rtp_type, "%s", type);
+	//pr_info("%s rtp_type=%s\n",__func__, rtp_type);
+	aw8697->rtp_file_num = num;
+
+	if(strcmp(rtp_type, "rog2") == 0)
+		out_pwm = gROG2_RTP_PWM;
+
+	aw8697_haptic_set_pwm(aw8697, out_pwm);
+
+	rc = aw8697_load_rtp_file();
+	if (rc == 0)
+
+	schedule_delayed_work(&aw8697->rtp_work, msecs_to_jiffies(delay_ms));
+
+	mutex_unlock(&aw8697->lock);
+	return rc;
+}
+
+static ssize_t aw8697_rtp_play_boot_store(struct device *dev,
+				struct device_attribute *attr, const char *buf,
+				size_t count)
+{
+	unsigned int val = 0;
+	int rc = 0;
+
+	if(!buf) return -1;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0) {
+		pr_info("%s: kstrtouint fail\n", __func__);
+		return rc;
+	}
+
+	aw8697_rtp_play_boot_store_base( dev, val, "awinic", 1, 0);
+	return count;
+}
+//20230825 add--- end
 
 static ssize_t aw8697_rtp_play_repeat_store(struct device *dev,
 				struct device_attribute *attr, const char *buf,
@@ -4503,6 +4687,7 @@ static DEVICE_ATTR(mem_play, S_IWUSR | S_IRUGO, aw8697_mem_play_show, aw8697_mem
 static DEVICE_ATTR(rtp, S_IWUSR | S_IRUGO, aw8697_rtp_show, aw8697_rtp_store);
 
 static DEVICE_ATTR(rtp_play, S_IWUSR | S_IRUGO, aw8697_rtp_play_show, aw8697_rtp_play_store);
+static DEVICE_ATTR(rtp_play_boot, S_IWUSR | S_IRUGO, aw8697_rtp_play_boot_show, aw8697_rtp_play_boot_store);
 static DEVICE_ATTR(rtp_play_repeat, S_IWUSR | S_IRUGO, aw8697_rtp_play_repeat_show, aw8697_rtp_play_repeat_store);
 static DEVICE_ATTR(rtp_play_delay, S_IWUSR | S_IRUGO, NULL, aw8697_rtp_play_delay_store);
 static DEVICE_ATTR(rtp_play_break, S_IWUSR | S_IRUGO, aw8697_rtp_play_break_show, aw8697_rtp_play_break_store);
@@ -4548,6 +4733,8 @@ static DEVICE_ATTR(haptic_audio, S_IWUSR | S_IRUGO, aw8697_haptic_audio_show,
 static DEVICE_ATTR(haptic_audio_time, S_IWUSR | S_IRUGO,
 		   aw8697_haptic_audio_time_show,
 		   aw8697_haptic_audio_time_store);
+static DEVICE_ATTR(rtp_len, S_IWUSR | S_IRUGO, NULL, asus_rtp_len_store);
+static DEVICE_ATTR(rtp_data, S_IWUSR | S_IRUGO, NULL, asus_rtp_data_store);
 
 static struct attribute *aw8697_vibrator_attributes[] = {
 	&dev_attr_state.attr,
@@ -4564,6 +4751,7 @@ static struct attribute *aw8697_vibrator_attributes[] = {
 	&dev_attr_rtp.attr,
 	&dev_attr_mem_play.attr,
 	&dev_attr_rtp_play.attr,
+	&dev_attr_rtp_play_boot.attr,
 	&dev_attr_rtp_play_repeat.attr,
 	&dev_attr_rtp_play_delay.attr,
 	&dev_attr_rtp_play_break.attr,
@@ -4587,6 +4775,8 @@ static struct attribute *aw8697_vibrator_attributes[] = {
 	&dev_attr_osc_cali.attr,
 	&dev_attr_haptic_audio.attr,
 	&dev_attr_haptic_audio_time.attr,
+	&dev_attr_rtp_len.attr,
+	&dev_attr_rtp_data.attr,
 	NULL
 };
 

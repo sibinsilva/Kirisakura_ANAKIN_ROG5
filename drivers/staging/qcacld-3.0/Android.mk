@@ -185,7 +185,6 @@ endif
 endif # Multi-ko check
 endif # DLKM check
 endif # supported target check
-include $(call all-makefiles-under,$(LOCAL_PATH))
 
 endif # WLAN enabled check
 endif # ENABLE_QCACLD
