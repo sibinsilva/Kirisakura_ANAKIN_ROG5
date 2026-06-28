@@ -1,0 +1,63 @@
+7251b2915d33 iio: addac: stx104: Fix race condition for stx104_write_raw()
+8f302378c704 iio: addac: stx104: Fix race condition when converting analog-to-digital
+4e96ee117500 fbdev: fix potential OOB read in fast_imageblit()
+a4628a5b98e4 scsi: qla2xxx: Fix deletion race condition
+a27c6bfc5287 virtio-mmio: fix memory leak of vm_dev
+511f3e9bbb0a perf/core: Fix potential NULL deref
+4e53bab11f01 nvmet-tcp: Fix a possible UAF in queue intialization setup
+5105d46146f2 tcp: fix cookie_init_timestamp() overflows
+899aa5638568 netfilter: nft_set_rbtree: fix null deref on element insertion
+70edeedd795a ext4: fix slab-use-after-free in ext4_es_insert_extent()
+36e19f84634a calipso: fix memory leak in netlbl_calipso_add_pass()
+d5661f46c11d kdb: Fix a potential buffer overflow in kdb_local()
+2501afe6c4c9 net/mlx5e: fix a double-free in arfs_create_groups
+81934a2ab51d lan78xx: Fix race conditions in suspend/resume handling
+bcd46782e2ec net/rds: fix possible cp null dereference
+9d04b4d0feee tcp: fix a signed-integer-overflow bug in tcp_add_backlog()
+6396b33e98c0 crypto: qat - Fix ADF_DEV_RESET_SYNC memory leak
+71a0cb1ba6cc ASoC: ti: davinci-mcasp: Fix race condition during probe
+15122dc140d8 HID: logitech-dj: Fix memory leak in logi_dj_recv_switch_to_dj_mode()
+40945660b488 media: dw2102: fix a potential buffer overflow
+907443174e76 net: ethernet: lantiq_etop: fix double free in detach
+b45432ce84fd pinctrl: ti: ti-iodelay: fix possible memory leak when pinctrl_enable() fails
+47b3dce10077 dev/parport: fix the array out-of-bounds risk
+b044588a16a9 devres: Fix memory leakage caused by driver API devm_free_percpu()
+d39f5be62f09 net: dsa: mv88e6xxx: Fix out-of-bound access
+5a32bfd23022 binder: fix UAF caused by offsets overwrite
+9e81f6b3ebb7 ACPI: processor: Fix memory leaks in error paths of processor_add()
+a33145f494e6 ASoC: meson: axg-card: fix 'use-after-free'
+9dcff844c1cb clk: qcom: clk-rpmh: Fix overflow in BCM vote
+b0641e53e6cb parport: Proper fix for array out-of-bounds access
+2222b0929d00 dm cache: fix potential out-of-bounds access on the first resume
+54c2c96eafcf spi: fix use-after-free of the add_lock mutex
+eea46baf1451 ftrace: Fix possible use-after-free issue in ftrace_location()
+cfb280cc3b3e 9p: fix slab cache name creation for real
+d48cbfa90dce fbdev: sh7760fb: Fix a possible memory leak in sh7760fb_alloc_mem()
+0f170e91d306 bpf: fix OOB devmap writes when deleting elements
+ae8512e93f4c ipv6: fix possible UAF in ip6_finish_output2()
+b3a3d5333c13 ipv6: prevent possible UAF in ip6_xmit()
+58f9e20e2a76 ocfs2: fix slab-use-after-free due to dangling pointer dqi_priv
+3c4423b0c4b9 net/xen-netback: prevent UAF in xenvif_flush_hash()
+08c32d6729d4 udf: Fix use of check_add_overflow() with mixed type arguments
+7789f9f790fe perf header: Fix one memory leakage in process_bpf_btf()
+3d13beb404ca perf header: Fix one memory leakage in process_bpf_prog_info()
+480afcbeb7aa ima: Fix use-after-free on a dentry's dname.name
+549de58dba4b vlan: fix memory leak in vlan_newlink()
+42561fe62c36 tracing: Fix use-after-free in print_graph_function_flags during tracer switching
+3d6fd5b9c6ac jfs: fix slab-out-of-bounds read in ea_get()
+ff70bd8ff44f net/mdiobus: Fix potential out-of-bounds read/write access
+a3cd5ae7befb regulator: gpio: Fix the out-of-bounds access to drvdata::gpiods
+2fb37ab32266 atm: clip: Fix memory leak of struct clip_vcc.
+4a1b82ee3319 power: supply: bq24190: Fix use after free bug in bq24190_remove due to race condition
+b35694ffabb2 net: appletalk: Fix use-after-free in AARP proxy probe
+eae64c4900d7 net: ncsi: Fix buffer overflow in fetching version id
+b0e2eee1205f squashfs: fix memory leak in squashfs_fill_super
+6cd3f13aaa62 nfs: fix UAF in direct writes
+bc4ffd962ce1 media: tuner: xc5000: Fix use-after-free in xc5000_release
+9205fb6e617a media: i2c: tc358743: Fix use-after-free bugs caused by orphan timer in probe
+ef442edff2e5 drivers/base/node: fix double free in register_one_node()
+a6f68f219d4d scsi: mvsas: Fix use-after-free bugs in mvs_work_queue
+14496175b264 fs: udf: fix OOB read in lengthAllocDescs handling
+71d84658a613 net/sched: sch_qfq: Fix null-deref in agg_dequeue
+5f541300b02e tipc: Fix use-after-free in tipc_mon_reinit_self().
+c4e746651bd7 Input: pegasus-notetaker - fix potential out-of-bounds access

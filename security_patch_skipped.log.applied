@@ -1,0 +1,428 @@
+195e806b2afb phy: hisilicon: Fix an out of bounds check in hisi_inno_phy_probe()
+352e0cae4cce Documentation: security-bugs.rst: clarify CVE handling
+800d8c96bf99 net/mlx5: DR, fix memory leak in mlx5dr_cmd_create_reformat_ctx
+ae9cf40873d3 mtd: rawnand: meson: fix OOB available bytes for ECC
+a2da00d1ea1a Bluetooth: L2CAP: Fix use-after-free in l2cap_sock_ready_cb
+d2c539c216cc nilfs2: fix use-after-free of nilfs_root in dirtying inodes via iput
+b97dad01c121 binder: fix memory leak in binder_init()
+ecb1fbe2879f scsi: core: Fix legacy /proc parsing buffer overflow
+cea09922f5f7 scsi: snic: Fix possible memory leak if device_add() fails
+e12fac07f61c scsi: core: Fix possible memory leak if device_add() fails
+b8fab6aebdf2 drm/radeon: Fix integer overflow in radeon_cs_parser_init
+6e7d9d76e565 fs: jfs: Fix UBSAN: array-index-out-of-bounds in dbAllocDmapLev
+22100df1d57f pcmcia: rsrc_nonstatic: Fix memory leak in nonstatic_release_resource_db()
+fe49aa73cca6 Bluetooth: L2CAP: Fix use-after-free
+c6059af6bf5e drm/amdgpu: Fix potential fence use-after-free v2
+b48b4b1885f7 USB: dwc3: qcom: fix NULL-deref on suspend
+373848d51fde net: xfrm: Fix xfrm_address_filter OOB read
+db0e50741f03 xfrm: fix slab-use-after-free in decode_session6
+eb47e612e59c ip6_vti: fix slab-use-after-free in decode_session6
+d34c30442d5e ip_vti: fix potential slab-use-after-free in decode_session6
+c0284760f470 clk: Fix slab-out-of-bounds error in devm_clk_release()
+61b71562beb3 batman-adv: Fix batadv_v_ogm_aggr_send memory leak
+ac0e0df5180c media: vcodec: Fix potential array out-of-bounds in encoder queue_setup
+56428d89a0da scsi: snic: Fix double free in snic_tgt_create()
+5876cae6d6ef staging: rtl8712: fix race condition
+a6650d27ab2c Bluetooth: btsdio: fix use after free bug in btsdio_remove due to race condition
+29eca8b7863d wifi: mwifiex: Fix OOB and integer underflow when rx packets
+8f717752f94e wifi: mwifiex: fix memory leak in mwifiex_histogram_read()
+df1753eae74b wifi: mwifiex: Fix missed return in oob checks failed path
+0a6f39488c38 drm/mediatek: Fix potential memory leak if vmap() fail
+de677f4379fa ipmi:ssif: Fix a memory leak when scanning for an adapter
+75d6ef197c48 media: dvb-usb: m920x: Fix a potential memory leak in m920x_i2c_xfer()
+12fcca2ee445 cpufreq: Fix the race condition while updating the transition_task of policy
+7a7dd70cb954 dccp: Fix out of bounds access in DCCP error handler
+d31331e2df6e drm: fix double free for gbo in drm_gem_vram_init and drm_gem_vram_create
+c7cc4dc2473c kconfig: fix possible buffer overflow
+a6d11571b91d net: sched: sch_qfq: Fix UAF in qfq_dequeue()
+aae45746f4ae mtd: rawnand: brcmnand: Fix potential out-of-bounds access in oob write
+ba6673824efa net: ethernet: mvpp2_main: fix possible OOB write in mvpp2_ethtool_get_rxnfc()
+479c71cda14b kcm: Fix memory leak in error path of kcm_sendmsg()
+6079dc77c6f3 autofs: fix memory leak of waitqueues in autofs_catatonic_mode
+117fb80cd1e6 locks: fix KASAN: use-after-free in trace_event_raw_event_filelock_lock
+aadb178c5123 hw_breakpoint: fix single-stepping when using bpf_overflow_handler
+6773ea9982dc alx: fix OOB-read compiler warning
+25a68f2286be md: raid1: fix potential OOB in raid1_remove_disk()
+7ffe14fce742 powerpc/pseries: fix possible memory leak in ibmebus_bus_init()
+2cbe6a88fbdd scsi: target: iscsi: Fix buffer overflow in lio_target_nacl_info_show()
+810fd23d9715 ipv4: fix null-deref in ipv4_link_failure
+193b5a1c6c67 nilfs2: fix potential use after free in nilfs_gccache_submit_read_data()
+b8e260654a29 wifi: mwifiex: Fix oob check condition in mwifiex_process_rx_packet
+85c2857ef900 ieee802154: ca8210: Fix a potential UAF in ca8210_probe
+5aa514100aaf Input: powermate - fix use-after-free in powermate_config_complete
+65d34cfd4e34 ravb: Fix use-after-free issue in ravb_tx_timeout_work()
+1d434d83136e regmap: fix NULL deref on lookup
+fa83d852e987 HID: holtek: fix slab-out-of-bounds Write in holtek_kbd_input_event
+340bb4b71661 regulator/core: Revert "fix kobject release warning and memory leak in regulator_register()"
+083ff5b50cf8 ASoC: pxa: fix a memory leak in probe()
+4d161e18b1c4 Bluetooth: hci_sock: fix slab oob read in create_monitor_event
+418ca6e63e06 igb: Fix potential memory leak in igb_add_ethtool_nfc_entry
+2f8da9511607 net: ieee802154: adf7242: Fix some potential buffer overflow in adf7242_stats_show()
+6ba2ffe3cb1c drm/dp_mst: Fix NULL deref in get_mst_branch_device_by_guid_helper()
+5776aeee2a60 kobject: Fix slab-out-of-bounds in fill_kobj_path()
+83ecffd40c65 ext4: fix BUG in ext4_mb_new_inode_pa() due to overflow
+25eaef1d0d0e i40e: fix potential memory leaks in i40e_remove()
+35854733ae67 can: dev: can_restart(): fix race condition between controller restart and netif_carrier_on()
+141ccc127230 clk: qcom: clk-rcg2: Fix clock rate overflow for high parent frequencies
+247ed618f534 powerpc/pseries: fix potential memory leak in init_cpu_associativity()
+58d6fb6a933c pcmcia: cs: fix possible hung task and memory leak pccardd()
+b35fdade92c5 media: bttv: fix use after free error due to btv->timeout timer
+50d122536661 Input: synaptics-rmi4 - fix use after free in rmi_unregister_function()
+da667a3f8e23 clocksource/drivers/timer-imx-gpt: Fix potential memory leak
+3c4236f1b2a7 Bluetooth: Fix double free in hci_conn_cleanup
+c847379a5d00 drm/amd: Fix UBSAN array-index-out-of-bounds for SMU7
+d50a56749e5a drm/amd: Fix UBSAN array-index-out-of-bounds for Polaris and Tonga
+ecfb47f13b08 jfs: fix array-index-out-of-bounds in dbFindLeaf
+7467ca10a5ff jfs: fix array-index-out-of-bounds in diAlloc
+eac3e4760aa1 drm/amd/display: Avoid NULL dereference of timing generator
+e4bdbcce8e02 net/mlx5e: fix double free of encap_header
+4d7d14c69667 firewire: core: fix possible memory leak in create_units()
+7ccf772a8bad ipv4: igmp: fix refcnt uaf issue when receiving igmp query packet
+427deb5ba566 netfilter: ipset: fix race condition between swap/destroy and kernel side add/del/test
+d162a5e6a51d kconfig: fix memory leak from range properties
+be1ab8bf0510 ipv6: fix potential NULL deref in fib6_add()
+610ebc289582 ALSA: pcm: fix out-of-bounds in snd_pcm_state_names
+d99376b70247 smb: client: fix potential NULL deref in parse_dfs_referrals()
+b099c28847cf atm: Fix Use-After-Free in do_vcc_ioctl
+3df812627e7d net/rose: Fix Use-After-Free in rose_ioctl
+5d9d500a2811 qed: Fix a potential use-after-free in qed_cxt_tables_alloc
+9112bd107208 appletalk: Fix Use-After-Free in atalk_ioctl
+3459c9aa6495 team: Fix use-after-free when an option instance allocation fails
+3b8b2c5d7675 ring-buffer: Fix memory leak of free page
+14d915ca5ae3 ARM: OMAP2+: Fix null pointer dereference and memory leak in omap_soc_device_init
+333fd1095584 Revert "net/mlx5e: fix double free of encap_header"
+3f82a6a6d7ee net: sched: ife: fix potential use-after-free
+3230a69e663b smb: client: fix NULL deref in asn1_ber_decoder()
+4257c16c149d scsi: bnx2fc: Fix skb double free in bnx2fc_rcv()
+508e2fdd978e smb: client: fix OOB in smbCalcSize()
+b1719cbb733e net: sched: em_text: fix possible memory leak in em_text_destroy()
+4c0fa624a693 ARM: sun9i: smp: Fix array-index-out-of-bounds read in sunxi_mc_smp_init
+93d80aadc02e i40e: fix use-after-free in i40e_aqc_add_filters()
+ec76b9e057de net/tg3: fix race condition in tg3_reset_task()
+e93da893d52d uio: Fix use-after-free in uio_open
+555a2f09a69d x86/lib: Fix overflow when counting digits
+5da3b6e7196f EDAC/thunderx: Fix possible out-of-bounds string access
+d1fe1aede684 pstore: ram_core: fix possible overflow in persistent_ram_init_ecc()
+e0e3f4a18784 crypto: scomp - fix req->dst buffer overflow
+47aa8fcd5e8b media: pvrusb2: fix use after free on context disconnection
+8e5bcb781f87 drm/radeon/r600_cs: Fix possible int overflows in r600_cs_check_reg()
+bf48d891234b drm/radeon/r100: Fix integer overflow issues in r100_cs_track_check()
+06d95c99d5a4 drm/amd/pm: fix a double-free in si_dpm_init
+8b55b06e737f drivers/amd/pm: fix a use-after-free in kv_parse_power_table
+a0a061151a62 of: Fix double free in of_parse_phandle_with_args_map
+a53e15e592b4 binder: fix use-after-free in shinker's callback
+93a7b8d4338b MIPS: Alchemy: Fix an out-of-bound access in db1200_dev_setup()
+d8003fdcc66c MIPS: Alchemy: Fix an out-of-bound access in db1550_dev_setup()
+14a7e3a0d099 PCI: keystone: Fix race condition when initializing PHYs
+02467ab8b404 net: qualcomm: rmnet: fix global oob in rmnet_policy
+a37ae111db5e net/rds: Fix UBSAN: array-index-out-of-bounds in rds_cmsg_recv
+1b9d6828589d jfs: fix slab-out-of-bounds Read in dtSearch
+3f8217c323fd jfs: fix array-index-out-of-bounds in dbAdjTree
+93df0a2a0b3c jfs: fix uaf in jfs_evict_inode
+de6a91aed1e0 jfs: fix array-index-out-of-bounds in diNewExt
+0e8c8aa8e3ce scsi: lpfc: Fix possible file string name overflow when updating firmware
+f11f0fd1ad6c wifi: ath9k: Fix potential array-index-out-of-bounds read in ath9k_htc_txstatus()
+105444e207d4 clk: hi3620: Fix memory leak in hi3620_mmc_clk_init()
+15d674571af0 clk: mmp: pxa168: Fix memory leak in pxa168_clk_init()
+884b746209ed libsubcmd: Fix memory leak in uniq()
+c26360941643 dmaengine: fsl-qdma: Fix a memory leak related to the status queue DMA
+1c75fe450b52 dmaengine: fsl-qdma: Fix a memory leak related to the queue command DMA
+1eb74c00c9c3 hwmon: (coretemp) Fix out-of-bounds memory access
+afbcad9ae7d6 ext4: fix double-free of blocks due to wrong extents moved_len
+08de58abedf6 can: j1939: Fix UAF in j1939_sk_match_filter during setsockopt(SO_J1939_FILTER)
+d04acadb6490 KVM: arm64: vgic-its: Avoid potential UAF in LPI translation cache
+febd74320015 memcg: add refcnt for pcpu stock to avoid UAF problem in drain_all_stock()
+85720b69aef1 wifi: mac80211: fix race condition on enabling fast-xmit
+c3a25d4fdd9a nvmet-tcp: fix nvme tcp ida memory leak
+f8cbd1791900 gtp: fix use-after-free and null-ptr-deref in gtp_genl_dump_pdp()
+cfa9abb5570c usb: cdns3: fixed memory use after free at cdns3_gadget_ep_disable()
+aad6132ae6e4 usb: cdns3: fix memory double free when handle zero packet
+82831e3ff76e ipv6: sr: fix possible use-after-free and null-ptr-deref
+ec92aa2cab6f gtp: fix use-after-free and null-ptr-deref in gtp_newlink()
+037d5a949b04 cachefiles: fix memory leak in cachefiles_add_cache()
+664f9c647260 net/ipv6: avoid possible UAF in ip6_route_mpath_notify()
+1a54aa506b3b aoe: fix the potential use-after-free problem in aoecmd_cfg_pkts
+ea96bf3f8062 ACPI: processor_idle: Fix memory leak in acpi_processor_power_exit()
+54a03e4ac1a4 Bluetooth: hci_core: Fix possible buffer overflow
+92c81fbb3ed2 bpf: Fix hashtab overflow check on 32-bit arches
+21e5fa4688e1 bpf: Fix stackmap overflow check on 32-bit arches
+f20c3270f3ed media: edia: dvbdev: fix a use-after-free
+8c2e4efe1278 media: imx: csc/scaler: fix v4l2_ctrl_handler memory leak
+d29ed08964ce media: pvrusb2: fix uaf in pvr2_context_set_notify
+d7ae7d126568 clk: Fix clk_core_get NULL dereference
+8e3f03f4ef7c wifi: brcmfmac: Fix use-after-free bug in brcmf_cfg80211_detach
+5a9f7e9123ac crypto: qat - fix double free during reset
+4206ad65a0ee ALSA: sh: aica: reorder cleanup operations to avoid UAF bugs
+e2cd32435b1d scsi: lpfc: Fix possible memory leak in lpfc_rcv_padisc()
+08a07d5a2073 drm/amd/display: Fix nanosec stat overflow
+4beab84fbb50 Bluetooth: Fix memory leak in hci_req_sync_complete()
+cca606e14264 ipv6: fix race condition between ipv6_get_ifaddr and ipv6_del_addr
+93eb31e7c339 kprobes: Fix possible use-after-free issue on kprobe registration
+5050ae879a82 drm: nv04: Fix out of bounds access
+1bc4825d4c3e nouveau: fix instmem race condition around ptr stores
+90f43980ea6b nilfs2: fix OOB in nilfs_set_de_type
+718df1bc226c net: gtp: Fix Use-After-Free in gtp_dellink
+589523cf0b38 net: openvswitch: Fix Use-After-Free in ovs_ct_exit
+1b73f6e4ea77 mlxsw: spectrum_acl_tcam: Fix possible use-after-free during activity update
+e118e7ea24d1 mlxsw: spectrum_acl_tcam: Fix possible use-after-free during rehash
+c6f3fa7f5a74 mlxsw: spectrum_acl_tcam: Fix memory leak during rehash
+51cefc9da400 mlxsw: spectrum_acl_tcam: Fix memory leak when canceling rehash work
+3212afd00e3c Bluetooth: Fix use-after-free bugs caused by sco_sock_timeout
+ddec23f206a9 ipv6: fib6_rules: avoid possible NULL dereference in fib6_rule_action()
+77e49fb4bf96 usb: gadget: f_fs: Fix a race condition when processing setup packets.
+93bc2d6d16f2 tipc: fix UAF in error path
+7b0e64583eab net: fix out-of-bounds access in ops_init
+6726429c18c6 smb: client: fix potential OOBs in smb2_parse_contexts()
+467139546f3f drm/amdgpu: Fix possible NULL dereference in amdgpu_ras_query_error_status_helper()
+b229bc6c6ea9 tty: n_gsm: fix possible out-of-bounds in gsm0_receive()
+e280ab978c81 drm/amd/display: Fix potential index out of bounds in color transformation function
+a0450d3f38e7 stm class: Fix a double free in stm_register_device()
+b01d29acc837 libsubcmd: Fix parse-options memory leak
+33d148cdb163 Input: ims-pcu - fix printf string overflow
+6aacaa80d962 tcp: Fix shift-out-of-bounds in dctcp_update_alpha().
+82933c84f188 nilfs2: fix use-after-free of timer for log writer thread
+ddd2972d8e2d kdb: Fix buffer overflow during tab-complete
+d5d9d241786f net: sched: sch_multiq: fix possible OOB write in multiq_tune()
+1e84c9b18381 jfs: xattr: fix buffer overflow for invalid xattr
+ebcf81504fef drm/exynos/vidi: fix memory leak in .get_modes()
+cf39c4f77a77 netfilter: nftables: exthdr: fix 4-byte stack OOB write
+74cd0a421896 greybus: Fix use-after-free bug in gb_interface_release due to race condition.
+075fc5d20cda rcutorture: Fix rcu_torture_one_read() pipe_count overflow comment
+e07a9c2a850c netrom: Fix a memory leak in nr_heartbeat_expiry()
+3200ffeec4d5 ipv6: prevent possible NULL deref in fib6_nh_init()
+d66fc4826127 ipv6: prevent possible NULL dereference in rt6_probe()
+b0af334616ed iio: chemical: bme680: Fix overflows in compensate() functions
+56f1c7e290cd ata: libata-core: Fix double free on error
+5c72587d024f media: dvb-frontends: tda10048: Fix integer overflow
+556edaa27c27 orangefs: fix out-of-bounds fsid access
+6b21346b399f bonding: Fix out-of-bounds read in bond_option_arp_ip_targets_set()
+cbe53087026a bnx2x: Fix multiple UBSAN array-index-out-of-bounds
+1cbbb3d9475c filelock: fix potential use-after-free in posix_lock_inode
+be847bb20c80 KVM: PPC: Book3S HV: Prevent UAF in kvm_spapr_tce_attach_iommu_group()
+24d78662f1aa pinctrl: core: fix possible memory leak when pinctrl_enable() fails
+1a8e19cbc3eb pinctrl: single: fix possible memory leak when pinctrl_enable() fails
+375ff2a273bf char: tpm: Fix possible memory leak in tpm_bios_measurements_open()
+72aff311194c media: venus: fix use after free in vdec_close
+b59a5e86a393 kobject_uevent: Fix OOB access within zap_modalias_env()
+7f25f296fc9b RDMA/iwcm: Fix a use-after-free related to destroying CM IDs
+9b3a4345957f jfs: Fix array-index-out-of-bounds in diFree
+d3e4d4a98c56 mISDN: Fix a use after free in hfcmulti_tx()
+37652fbef980 net/iucv: fix use after free in iucv_sock_close()
+37c093449704 net: usb: qmi_wwan: fix memory leak for not ip packets
+d3e4dbc2858f tracing: Fix overflow in get_free_elt()
+ea213d57f65c Bluetooth: bnep: Fix out-of-bound access
+ce2f6cfab2c6 ipv6: prevent UAF in ip6_send_skb()
+2b507b03991f mmc: mmc_test: Fix NULL dereference on allocation failure
+2cea369a5c2e pinctrl: single: fix potential NULL dereference in pcs_get_function()
+7aa9456288c1 media: uvcvideo: Fix integer overflow calculating timestamp
+10aeaa47e4aa cgroup/cpuset: Prevent UAF in proc_cpuset_show()
+564e1986b00c scsi: aacraid: Fix double-free on probe failure
+3d4d211d9b40 drm/amdgpu: fix overflowed array index read warning
+c1beebdfe7f8 drm/amd/display: Fix Coverity INTEGER_OVERFLOW within dal_gpio_service_create
+e789e0538885 drm/amdgpu: fix ucode out-of-bounds read warning
+2097edede72e drm/amdgpu: fix mc_data out-of-bounds read warning
+295ad5afd9ef sch/netem: fix use after free in netem_dequeue
+993b60c7f93f ASoC: dapm: Fix UAF for snd_soc_pcm_runtime object
+3dd4e84c0233 ata: libata: Fix memory leak for error path in ata_host_alloc()
+fac3cb3c6428 HID: cougar: fix slab-out-of-bounds Read in cougar_report_fixup
+b243d52b5f6f VMCI: Fix use-after-free when removing resource in vmci_resource_remove()
+aa05db44db5f spi: nxp-fspi: fix the KASAN report out-of-bounds bug
+1f5e352b9088 bpf: Fix DEVMAP_HASH overflow check on 32-bit arches
+bc2140534b2a block, bfq: fix possible UAF for bfqq->bic with merge chain
+ce56acc0e2c0 hwmon: (max16065) Fix overflows seen when writing limits
+41a3ed4182d0 drm/radeon/evergreen_cs: fix int overflow errors in cs track offsets
+5ad6284c8d43 jfs: fix out-of-bounds in dbNextAG() and diAlloc()
+ed76d381dae1 nilfs2: fix potential oob read in nilfs_btree_check_delete()
+49b33c38d202 drivers: media: dvb-frontends/rtl2832: fix an out-of-bounds write error
+883f794c6e49 drivers: media: dvb-frontends/rtl2830: fix an out-of-bounds write error
+b5a84b6c7725 net: seeq: Fix use after free vulnerability in ether3 Driver Due to Race Condition
+ba1cd08eb0fc nfs: fix memory leak in error path of nfs4_do_reclaim
+0f167c145613 soc: versatile: realview: fix memory leak during device remove
+d96512bfeee5 wifi: ath9k: fix possible integer overflow in ath9k_get_et_stats()
+b340de28c2ab ACPICA: Fix memory leak if acpi_ps_get_next_namepath() fails
+f2c2c674cb5d ACPICA: Fix memory leak if acpi_ps_get_next_field() fails
+ce2953e44829 ALSA: asihpi: Fix potential OOB array access
+6d0a07f68b66 fbdev: pxafb: Fix possible use after free in pxafb_task()
+3126ccde51f5 jfs: Fix uaf in dbFreeBits
+f5f6d9008713 drm/amd/display: Fix index out of bounds in degamma hardware format translation
+a786265aecf3 aoe: fix the potential use-after-free problem in more places
+63bbe26471eb media: venus: fix use after free bug in venus_remove due to race condition
+a9beea8c8509 Input: synaptics-rmi4 - fix UAF of IRQ domain on driver removal
+5126d8f5567f ntb: ntb_hw_switchtec: Fix use after free vulnerability in switchtec_ntb_remove due to race condition
+57c4f4db0a19 fbdev: sisfb: Fix strbuf array overflow
+dcd96d735287 SUNRPC: Fix integer overflow in decode_rc_list()
+2408f491ff99 wifi: mac80211: fix potential key use-after-free
+389bdb093fcf net: ethernet: aeroflex: fix potential memory leak in greth_start_xmit_gbit()
+31701ef0c454 net: systemport: fix potential memory leak in bcm_sysport_xmit()
+6f0516ef1290 smb: client: fix OOBs when building SMB2_IOCTL request
+8d5b20fbc548 net/sun3_82586: fix potential memory leak in sun3_82586_send_packet()
+6b7ce8ee01c3 be2net: fix potential memory leak in be_xmit()
+2f868ce60135 net: sched: fix use-after-free in taprio_change()
+4f3e9217fbf1 cgroup: Fix potential overflow issue when checking max_depth
+91afbc0eb3c9 bpf: Fix out-of-bounds write in trie_get_next_key()
+6fc9af3df6ca wifi: ath10k: Fix memory leak in management tx
+4efb69a0e294 security/keys: fix slab-out-of-bounds in key_task_permission
+8501e38dc9e0 dm cache: fix out-of-bounds access to the dirty bitset when resizing
+39709ce93f5c USB: serial: io_edgeport: fix use after free in debug printk
+7b222d6cb870 cifs: Fix buffer overflow when parsing NFS reparse points
+8cc31cfa36ff EDAC/bluefield: Fix potential integer overflow
+22fbbc37edb8 mtd: rawnand: atmel: Fix possible memory leak
+3932c753f805 scsi: bfa: Fix use-after-free in bfad_im_module_exit()
+97384449ddfc scsi: qedf: Fix a possible memory leak in qedf_alloc_and_init_sb()
+eaf92fad1f21 scsi: qedi: Fix a possible memory leak in qedi_alloc_and_init_sb()
+cac1405e3ff6 NFSD: Prevent NULL dereference in nfsd4_process_cb_update()
+7b99620a9f7e net: usb: lan78xx: Fix memory leak on device unplug by freeing PHY device
+9b8460a2a7ce ALSA: usb-audio: Fix potential out-of-bound accesses for Extigy and Mbox devices
+d0ddd2c92b75 PCI: Fix use-after-free of slot->bus on hot remove
+5c710f45811e um: Fix potential integer overflow during physmem setup
+7bf6bf130af8 NFSv4.0: Fix a use-after-free problem in the asynchronous open()
+871c148f8e0c ubi: fastmap: Fix duplicate slab cache names while attaching
+daac4aa1825d ubifs: authentication: Fix use-after-free in ubifs_tnc_end_commit
+d8de818df12d sh: intc: Fix use-after-free bug in register_intc_controller()
+dfb9fe7de61f btrfs: ref-verify: fix use-after-free after invalid ref action
+cf642904be39 media: platform: allegro-dvt: Fix possible memory leak in allocate_buffers_internal()
+623be080ab3c dccp: Fix memory leak in dccp_feat_change_recv
+4e69457f9dfa tipc: Fix use-after-free of kernel socket in cleanup_bearer().
+09d6d05579fd nilfs2: fix potential out-of-bounds memory access in nilfs_find_entry()
+cb8ae56d73f2 drm/radeon/r600_cs: Fix possible int overflow in r600_packet3_check()
+4803d81373ae net/sched: cbs: Fix integer overflow in cbs_set_port_rate()
+bbb24ce7f06e jfs: fix shift-out-of-bounds in dbSplit
+b62f41aeec9d jfs: fix array-index-out-of-bounds in jfs_readdir
+a632bdcb359f ALSA: usb-audio: Fix out of bounds reads when finding clock sources
+d1d4dfb189a1 tipc: fix NULL deref in cleanup_bearer()
+0430f13291f7 drm/i915: Fix memory leak by correcting cache object name in error handler
+ca9818554b0f mtd: rawnand: fix double free in atmel_pmecc_create_user()
+a61a174280da ipv6: avoid possible NULL deref in rt6_uncached_list_flush_dev()
+e19acb1926c4 scsi: sg: Fix slab-use-after-free read in sg_release()
+448100a29395 ext4: fix slab-use-after-free in ext4_split_extent_at()
+85b67b4c4a0f wifi: rtlwifi: fix memory leaks and invalid access at probe error path
+21cd59fcb995 rtc: pcf85063: fix potential OOB write in PCF85063 NVMEM read
+db79e982c5f9 net: davicom: fix UAF in dm9000_drv_remove
+093c20a38c9c perf trace: Fix runtime error of index out of bounds
+a149fe312e9b genksyms: fix memory leak when the same symbol is added from source
+884385cb4fab genksyms: fix memory leak when the same symbol is read from *.symref file
+d6e5ba2516c5 media: uvcvideo: Fix double free in error path
+cee55b121956 btrfs: fix use-after-free when attempting to join an aborted transaction
+54c14022fa2b printk: Fix signed integer overflow when defining LOG_BUF_LEN_MAX
+0b6be54d7386 binfmt_flat: Fix integer overflow bug on 32 bit systems
+7649937987fe nilfs2: fix possible int overflows in nilfs_fiemap()
+18b7f841109f orangefs: fix a oob in orangefs_debug_write
+785c78ed0d39 pps: Fix a use-after-free
+87bc3cb23c56 driver core: bus: Fix double free in driver API bus_register()
+d5e86e27de09 geneve: Fix use-after-free in geneve_find_dev().
+3c6e8129a42e power: supply: da9150-fg: fix potential overflow
+6db423b00940 HID: appleir: Fix potential NULL dereference at raw event handle
+0c1fb475ef99 HID: intel-ish-hid: Fix use-after-free issue in ishtp_hid_remove()
+a858cd58dea0 iscsi_ibft: Fix UBSAN shift-out-of-bounds warning in ibft_attr_show_nic()
+d509c4731090 x86/microcode/AMD: Fix out-of-bounds on systems with CPU-less NUMA nodes
+880295b68a18 qlcnic: fix memory leak issues in qlcnic_sriov_common.c
+50e288097c2c net: atm: fix use after free in lec_send()
+914c5e5bfceb memstick: rtsx_usb_ms: Fix slab-use-after-free in rtsx_usb_ms_drv_remove
+521415663391 hwmon: (nct6775-core) Fix out of bounds access for NCT679{8,9}
+f56951f211f1 ntb_hw_switchtec: Fix shift-out-of-bounds in switchtec_ntb_mw_set_trans
+84895f5ce382 tipc: fix memory leak in tipc_link_xmit
+34a9394794b0 pm: cpupower: bench: Prevent NULL dereference on malloc failure
+736ae988bfb5 scsi: st: Fix array overflow in st_setup()
+563917cbae6e wifi: mac80211: fix integer overflow in hwmp_route_info_get()
+d03abc1c2b21 HSI: ssi_protocol: Fix use after free vulnerability in ssi_protocol Driver Due to Race Condition
+c731cdfddcf1 wifi: at76c50x: fix use after free access in at76_disconnect
+13c9744c1bcd wifi: wl1251: fix memory leak in wl1251_tx_work
+c3e9717276af Bluetooth: btrtl: Prevent potential NULL dereference
+8060afd77761 hfs/hfsplus: fix slab-out-of-bounds in hfs_bnode_read_key
+b65769bc2e73 drm/repaper: fix integer overflows in repeat functions
+14da7dbecb43 ext4: fix OOB read when checking dotdot dir
+966d6494e2ed net: phy: leds: fix memory leak
+28b09a067831 net_sched: hfsc: Fix a UAF vulnerability in class handling
+68f256305ceb net_sched: hfsc: Fix a potential UAF in hfsc_dequeue() too
+d70184958b0e mcb: fix a double free bug in chameleon_parse_gdd()
+e84a08fc7e25 udmabuf: fix a buf size overflow issue during udmabuf creation
+f4b0174e9f18 tracing: Fix oob write in trace_seq_to_buffer()
+273bbcfa5354 net_sched: hfsc: Fix a UAF vulnerability in class with netem as child qdisc
+2b65060c84ee iommu/amd: Fix potential buffer overflow in parse_ivrs_acpihid
+7c7c80c32e00 RDMA/rxe: Fix slab-use-after-free Read in rxe_queue_cleanup bug
+7f42126b61e6 qlcnic: fix memory leak in qlcnic_sriov_channel_cfg_cmd()
+5bff312b59b3 crypto: algif_hash - fix double free in hash_accept
+aee067e88d61 smb: client: Fix use-after-free in cifs_fill_dirent
+e443e547a537 drm: rcar-du: Fix memory leak in rcar_du_vsps_init()
+264a5cf0c422 pinctrl: at91: Fix possible out-of-boundary access
+12e4431e5078 bus: fsl-mc: fix double-free on mc_dev
+d3dfc60efd14 ext4: inline: fix len overflow in ext4_prepare_inline_data
+92311f8dfd4f dm-mirror: fix a tiny race condition
+d064c68781c1 ftrace: Fix UAF when lookup kallsym after ftrace disabled
+81af4b34fd72 jfs: fix array-index-out-of-bounds read in add_missing_indices
+64773b3ea092 arm64/ptrace: Fix stack-out-of-bounds read in regs_get_kernel_stack_nth()
+6fd52bfecd16 ceph: fix possible integer overflow in ceph_zero_objects()
+013dcdf6f03b RDMA/iwcm: Fix use-after-free of work objects after cm_id destruction
+24ff7d465c42 ALSA: usb-audio: Fix out-of-bounds read in snd_usb_get_audioformat_uac3()
+14f42b7be215 wifi: mac80211: fix beacon interval calculation overflow
+e0d646954b81 HID: wacom: fix memory leak on kobject creation failure
+ee49c0e99a07 HID: wacom: fix memory leak on sysfs attribute creation failure
+03dcdd2558e1 tipc: Fix use-after-free in tipc_conn_close().
+18d58a467ccf usb: gadget: u_serial: Fix race condition in TTY wakeup
+78b41148cfea usb: gadget: configfs: Fix OOB read on empty string write
+374d9b3eb4b0 comedi: pcl812: Fix bit shift out of bounds
+a88692245c31 comedi: aio_iiro_16: Fix bit shift out of bounds
+539bdff832ad comedi: das16m1: Fix bit shift out of bounds
+a15e9c175f78 comedi: das6402: Fix bit shift out of bounds
+aa7a22c4d678 net/sched: sch_qfq: Fix race condition on qfq_aggregate
+7574892e259b regulator: core: fix NULL dereference on unbind due to stale coupling data
+83ea0c7b8d12 staging: fbtft: fix potential memory leak in fbtft_framebuffer_alloc()
+78561ada3f35 bpftool: Fix memory leak in dump_xx_nlmsg on realloc failure
+ee8cff4694d6 wifi: iwlwifi: Fix memory leak in iwl_mvm_init()
+a0d2de5561f4 mtd: fix possible integer overflow in erase_xfer()
+abe9813d60e1 pinctrl: sunxi: Fix memory leak on krealloc failure
+37e78cad7e9e f2fs: fix to avoid UAF in f2fs_sync_inode_meta()
+dc0172c74bd9 f2fs: fix to avoid out-of-boundary access in devs.path
+dba96dfa5a0f usb: gadget : fix use-after-free in composite_dev_cleanup()
+e7d2dc2421e8 hfs: fix slab-out-of-bounds in hfs_bnode_read()
+032f7ed6717a hfsplus: fix slab-out-of-bounds in hfsplus_bnode_read()
+73f7da507d78 hfsplus: fix slab-out-of-bounds read in hfsplus_uni2asc()
+04fa6f5e9403 ALSA: hda/ca0132: Fix buffer overflow in add_tuning_control
+137d67e90386 wifi: iwlwifi: dvm: fix potential overflow in rs_fill_link_cmd()
+ecd425c5091b wifi: iwlwifi: fw: Fix possible memory leak in iwl_fw_dbg_collect
+1764376ae004 wifi: rtlwifi: fix possible skb memory leak in `_rtl_pci_rx_interrupt()`.
+0589cc9733d8 kconfig: gconf: fix potential memory leak in renderer_edited()
+9ad554217c9b media: uvcvideo: Fix 1-byte out-of-bounds read in uvc_parse_format()
+cf55b84f8d17 media: imx: fix a potential memory leak in imx_media_csc_scaler_device_init()
+aca1b4f7afdc media: ov2659: Fix memory leaks in ov2659_probe()
+70a09115da58 fs/buffer: fix use-after-free when call bh_read() helper
+2964dbe631fd media: rainshadow-cec: fix TOCTOU race condition in rain_interrupt()
+ee4d13f5407c f2fs: fix to avoid out-of-boundary access in dnode page
+6894717a1ea3 Bluetooth: fix use-after-free in device_for_each_child()
+fe87e2d0e626 cifs: Fix UAF in cifs_demultiplex_thread()
+0f63fbabeaaa efivarfs: Fix slab-out-of-bounds in efivarfs_d_compare
+9a9e4a831743 HID: asus: fix UAF via HID_CLAIMED_INPUT validation
+a8bb681e879c wifi: cfg80211: fix use-after-free in cmp_bss()
+964cbb198f9c Bluetooth: Fix use-after-free in l2cap_sock_cleanup_listen()
+615378d5a880 mISDN: Fix memory leak in dsp_hwec_enable()
+d0e34c9f7900 net: atm: fix memory leak in atm_register_sysfs when device_register fail
+9ca6a040f76c ppp: fix memory leak in pad_compress_skb
+30fc47248f02 batman-adv: fix OOB read/write in network-coding decode
+ea832ec0583e e1000e: fix heap overflow in e1000_set_eeprom
+1be4500cfa60 cifs: fix integer overflow in match_server()
+34f9bdae1548 net: liquidio: fix overflow in octeon_init_instr_queue()
+fde6e73189f4 cnic: Fix use-after-free bugs in cnic_delete_task
+572c65680278 can: peak_usb: fix shift-out-of-bounds issue
+70b0c11483d3 drm/gma500: Fix null dereference in hdmi teardown
+994bdc2d23c7 fbcon: fix integer overflow in fbcon_do_set_font
+4bcf5f7a6845 fbcon: Fix OOB access in font allocation
+607010d07b8a media: b2c2: Fix use-after-free causing by irq_check_work in flexcop_pci_remove
+7c4d9b317723 ACPI: processor: idle: Fix memory leak when register cpuidle device failed
+c24a1f683b64 wifi: mt76: fix potential memory leak in mt76_wmac_probe()
+283333079d96 ocfs2: fix double free in user_cluster_connect()
+1822e5287b7d drm/vmwgfx: Fix Use-after-free in validation
+1014b83778c8 net/sctp: fix a null dereference in sctp_disposition sctp_sf_do_5_1D_ce()
+76307bb5712c scsi: hpsa: Fix potential memory leak in hpsa_big_passthru_ioctl()
+07926ce598a9 tracing: Fix race condition in kprobe initialization causing NULL pointer dereference
+603158d4efa9 hfsplus: fix slab-out-of-bounds read in hfsplus_strcasecmp()
+61cda2777b07 sctp: avoid NULL dereference when chunk data buffer is missing
+3f803ccf5a0c ACPI: video: Fix use-after-free in acpi_video_switch_brightness()
+d958d9a62032 wifi: ath10k: Fix memory leak on unsupported WMI command
+57707135755b Bluetooth: SCO: Fix UAF on sco_conn_free
+c6564ff6b53c orangefs: fix xattr related buffer overflow...
+996bfaa7372d fbdev: Add bounds checking in bit_putcs to fix vmalloc-out-of-bounds
+9649275aee90 tracing: Fix memory leaks in create_field_var()
+297dbf87989e Bluetooth: btusb: reorder cleanup in btusb_disconnect to avoid UAF
+475032fa2bb8 isdn: mISDN: hfcsusb: fix memory leak in hfcsusb_probe()
+607333b38f6b mlxsw: spectrum: Fix memory leak in mlxsw_sp_flower_stats()
+1d1596d68a6f fs/proc: fix uaf in proc_readdir_de()
