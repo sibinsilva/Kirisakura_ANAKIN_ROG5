@@ -91,7 +91,7 @@ static LIST_HEAD(dev_map_list);
 static struct hlist_head *dev_map_create_hash(unsigned int entries,
 					      int numa_node)
 {
-	int i;
+	u32 i;
 	struct hlist_head *hash;
 
 	hash = bpf_map_area_alloc((u64) entries * sizeof(*hash), numa_node);
@@ -545,7 +545,7 @@ static int dev_map_delete_elem(struct bpf_map *map, void *key)
 {
 	struct bpf_dtab *dtab = container_of(map, struct bpf_dtab, map);
 	struct bpf_dtab_netdev *old_dev;
-	int k = *(u32 *)key;
+	u32 k = *(u32 *)key;
 
 	if (k >= map->max_entries)
 		return -EINVAL;
@@ -568,7 +568,7 @@ static int dev_map_hash_delete_elem(struct bpf_map *map, void *key)
 {
 	struct bpf_dtab *dtab = container_of(map, struct bpf_dtab, map);
 	struct bpf_dtab_netdev *old_dev;
-	int k = *(u32 *)key;
+	u32 k = *(u32 *)key;
 	unsigned long flags;
 	int ret = -ENOENT;
 
