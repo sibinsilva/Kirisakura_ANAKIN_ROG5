@@ -3534,7 +3534,6 @@ static int binder_thread_write(struct binder_proc *proc,
 
 			if (get_user(node_ptr, (binder_uintptr_t __user *)ptr))
 				return -EFAULT;
-				object_offset > tr->data_size ||
 			ptr += sizeof(binder_uintptr_t);
 			if (get_user(cookie, (binder_uintptr_t __user *)ptr))
 				return -EFAULT;
