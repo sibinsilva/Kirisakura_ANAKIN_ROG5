@@ -26,6 +26,7 @@ supported.vendorpatchlevels=
 boot_attributes() {
 set_perm_recursive 0 0 755 644 $RAMDISK/*;
 set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+set_perm 0 0 755 $RAMDISK/ksud;
 } # end attributes
 
 # boot shell variables
