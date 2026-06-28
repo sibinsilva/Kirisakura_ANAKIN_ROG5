@@ -1,0 +1,31 @@
+--- net/netlabel/netlabel_calipso.c
++++ net/netlabel/netlabel_calipso.c
+@@ -387,28 +412,6 @@ int __init netlbl_calipso_genl_init(void)
+ 	return genl_register_family(&netlbl_calipso_gnl_family);
+ }
+ 
+-static const struct netlbl_calipso_ops *calipso_ops;
+-
+-/**
+- * netlbl_calipso_ops_register - Register the CALIPSO operations
+- * @ops: ops to register
+- *
+- * Description:
+- * Register the CALIPSO packet engine operations.
+- *
+- */
+-const struct netlbl_calipso_ops *
+-netlbl_calipso_ops_register(const struct netlbl_calipso_ops *ops)
+-{
+-	return xchg(&calipso_ops, ops);
+-}
+-EXPORT_SYMBOL(netlbl_calipso_ops_register);
+-
+-static const struct netlbl_calipso_ops *netlbl_calipso_ops_get(void)
+-{
+-	return READ_ONCE(calipso_ops);
+-}
+-
+ /**
+  * calipso_doi_add - Add a new DOI to the CALIPSO protocol engine
+  * @doi_def: the DOI structure
