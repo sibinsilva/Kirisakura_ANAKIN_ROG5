@@ -104,3 +104,20 @@ write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_
 #write_boot; # use flash_boot to skip ramdisk repack, e.g. for dtb on devices with hdr v4 but no vendor_kernel_boot
 ## end vendor_boot install
 
+# ── Clean up previous systemless Tuxera modules ─────────────────────────
+mount /data 2>/dev/null || true
+if [ -d /data/adb/modules/kirisakura_tuxera ] || [ -d /data/adb/modules_update/kirisakura_tuxera ]; then
+    ui_print " ";
+    ui_print "→ Removing old systemless Tuxera module...";
+    rm -rf /data/adb/modules/kirisakura_tuxera
+    rm -rf /data/adb/modules_update/kirisakura_tuxera
+    # For KernelSU-Next, we must make sure KSU detects the update
+    if [ -d /data/adb/ksu ]; then
+        touch /data/adb/ksu/update
+    fi
+    ui_print "✓ Removed old module.";
+    ui_print " ";
+fi
+
+
+
