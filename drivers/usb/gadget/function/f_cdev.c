@@ -1617,6 +1617,7 @@ static long f_cdev_ioctl(struct file *fp, unsigned int cmd,
 	int i = 0;
 	uint32_t val;
 	struct f_cdev *port;
+	unsigned long flags;
 
 	port = fp->private_data;
 	if (!port) {
