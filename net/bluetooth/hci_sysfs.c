@@ -58,6 +58,7 @@ void hci_conn_del_sysfs(struct hci_conn *conn)
 
 	bt_dev_dbg(hdev, "conn %p", conn);
 
+
 	if (!device_is_registered(&conn->dev)) {
 		/* If device_add() has *not* succeeded, use *only* put_device()
 		 * to drop the reference count.

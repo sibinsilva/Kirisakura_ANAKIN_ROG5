@@ -74,6 +74,7 @@
 #define trace_syncpoint_fence_expire(...) ((void)0)
 #define trace_syncpoint_timestamp(...) ((void)0)
 #define trace_syncpoint_timestamp_expire(...) ((void)0)
+#define trace_syncpoint_timeline_fence(...) ((void)0)
 
 #if 0
 #if !defined(_KGSL_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
