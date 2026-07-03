@@ -119,5 +119,27 @@ if [ -d /data/adb/modules/kirisakura_tuxera ] || [ -d /data/adb/modules_update/k
     ui_print " ";
 fi
 
+# ── Install automatic Tuxera module loader at boot ──────────────────────
+ui_print "→ Setting up Tuxera OTG Support...";
+mkdir -p /data/adb/service.d
+cat << 'EOF' > /data/adb/service.d/load_tuxera.sh
+#!/system/bin/sh
+# Wait until vendor partition is mounted and files are available
+for i in $(seq 1 10); do
+    if [ -f /vendor/lib/modules/texfat.ko ]; then
+        break
+    fi
+    sleep 2
+done
+
+insmod /vendor/lib/modules/texfat.ko
+insmod /vendor/lib/modules/tntfs.ko
+EOF
+
+chmod 755 /data/adb/service.d/load_tuxera.sh
+chown 0:0 /data/adb/service.d/load_tuxera.sh
+ui_print "✓ Tuxera OTG Support script installed.";
+ui_print " ";
+
 
 

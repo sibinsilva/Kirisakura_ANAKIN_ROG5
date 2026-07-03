@@ -223,9 +223,14 @@ int ipc_log_context_destroy(void *ctxt);
 
 #else
 
+#ifdef __EXPORT_IPC_LOGGING_STUBS
+extern void *ipc_log_context_create(int max_num_pages,
+	const char *modname, uint32_t feature_version);
+#else
 static inline void *ipc_log_context_create(int max_num_pages,
 	const char *modname, uint32_t feature_version)
 { return NULL; }
+#endif
 
 static inline void msg_encode_start(struct encode_context *ectxt,
 	uint32_t type) { }
@@ -250,8 +255,12 @@ static inline void msg_encode_end(struct encode_context *ectxt) { }
 
 static inline void ipc_log_write(void *ctxt, struct encode_context *ectxt) { }
 
+#ifdef __EXPORT_IPC_LOGGING_STUBS
+extern int ipc_log_string(void *ilctxt, const char *fmt, ...) __printf(2, 3);
+#else
 static inline int ipc_log_string(void *ilctxt, const char *fmt, ...)
 { return -EINVAL; }
+#endif
 
 static inline int ipc_log_extract(void *ilctxt, char *buff, int size)
 { return -EINVAL; }
@@ -279,8 +288,12 @@ static inline int add_deserialization_func(void *ctxt, int type,
 				      struct decode_context *))
 { return 0; }
 
+#ifdef __EXPORT_IPC_LOGGING_STUBS
+extern int ipc_log_context_destroy(void *ctxt);
+#else
 static inline int ipc_log_context_destroy(void *ctxt)
 { return 0; }
+#endif
 
 #endif
 

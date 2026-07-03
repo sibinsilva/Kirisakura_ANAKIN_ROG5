@@ -38,6 +38,11 @@ int put_itimerspec64(const struct itimerspec64 *it,
  * An encoding of midnight at the end of the day as 24:00:00 - ie. midnight
  * tomorrow - (allowable under ISO 8601) is supported.
  */
+#ifdef __EXPORT_MKTIME64
+extern time64_t mktime64(const unsigned int year0, const unsigned int mon0,
+		const unsigned int day, const unsigned int hour,
+		const unsigned int min, const unsigned int sec);
+#else
 static inline time64_t mktime64(const unsigned int year0, const unsigned int mon0,
 		const unsigned int day, const unsigned int hour,
 		const unsigned int min, const unsigned int sec)
@@ -57,6 +62,8 @@ static inline time64_t mktime64(const unsigned int year0, const unsigned int mon
 	  )*60 + min /* now have minutes */
 	)*60 + sec; /* finally seconds */
 }
+#endif
+
 
 /* Some architectures do not supply their own clocksource.
  * This is mainly the case in architectures that get their

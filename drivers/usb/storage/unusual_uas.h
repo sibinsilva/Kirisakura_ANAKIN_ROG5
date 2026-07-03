@@ -76,12 +76,22 @@ UNUSUAL_DEV(0x0b05, 0x1932, 0x0000, 0x9999,
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
 		US_FL_IGNORE_UAS),
 
+/* Seagate BUP Slim RD — UAS Synchronize Cache(10) causes DID_RESET loop;
+ * force BOT (Bulk-Only Transport) mode to avoid repeated re-enumeration.
+ * Reported-by: Sibin Silvester <sibinsilva@gmail.com> */
+UNUSUAL_DEV(0x0bc2, 0xab24, 0x0000, 0x9999,
+		"Seagate",
+		"BUP Slim RD",
+		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
+		US_FL_IGNORE_UAS),
+
 /* Reported-by: David Webb <djw@noc.ac.uk> */
 UNUSUAL_DEV(0x0bc2, 0x331a, 0x0000, 0x9999,
 		"Seagate",
 		"Expansion Desk",
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
 		US_FL_NO_REPORT_LUNS),
+
 
 /* Reported-by: Benjamin Tissoires <benjamin.tissoires@redhat.com> */
 UNUSUAL_DEV(0x13fd, 0x3940, 0x0000, 0x9999,

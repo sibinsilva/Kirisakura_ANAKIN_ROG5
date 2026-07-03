@@ -1,3 +1,6 @@
+#define __EXPORT_MKTIME64
+#define __EXPORT_IPC_LOGGING_STUBS
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  *  Copyright (C) 1991, 1992  Linus Torvalds
@@ -529,3 +532,52 @@ int put_old_itimerspec32(const struct itimerspec64 *its,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(put_old_itimerspec32);
+
+/*
+ * Support for precompiled stock vendor modules (which look for these as exported symbols)
+ */
+time64_t mktime64(const unsigned int year0, const unsigned int mon0,
+		const unsigned int day, const unsigned int hour,
+		const unsigned int min, const unsigned int sec)
+{
+	unsigned int mon = mon0, year = year0;
+
+	/* 1..12 -> 11,12,1..10 */
+	if (0 >= (int) (mon -= 2)) {
+		mon += 12;	/* Puts Feb last since it has leap day */
+		year -= 1;
+	}
+
+	return ((((time64_t)
+		  (year/4 - year/100 + year/400 + 367*mon/12 + day) +
+		  year*365 - 719499
+	    )*24 + hour /* now have hours - midnight tomorrow handled here */
+	  )*60 + min /* now have minutes */
+	)*60 + sec; /* finally seconds */
+}
+EXPORT_SYMBOL(mktime64);
+
+
+#ifndef CONFIG_IPC_LOGGING
+void *ipc_log_context_create(int max_num_pages,
+	const char *modname, uint32_t feature_version)
+{
+	/* Return a dummy non-NULL pointer so callers think it succeeded */
+	return (void *)0x12345678;
+}
+EXPORT_SYMBOL(ipc_log_context_create);
+
+int ipc_log_string(void *ilctxt, const char *fmt, ...)
+{
+	return 0;
+}
+EXPORT_SYMBOL(ipc_log_string);
+
+int ipc_log_context_destroy(void *ctxt)
+{
+	return 0;
+}
+EXPORT_SYMBOL(ipc_log_context_destroy);
+#endif
+
+
