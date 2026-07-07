@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2017-2018 HUAWEI, Inc.
- *             http://www.huawei.com/
+ *             https://www.huawei.com/
  * Created by Gao Xiang <gaoxiang25@huawei.com>
  */
 #include "internal.h"
@@ -109,21 +109,6 @@ err_out:
 	return err;
 }
 
-int erofs_map_blocks(struct inode *inode,
-		     struct erofs_map_blocks *map, int flags)
-{
-	if (erofs_inode_is_data_compressed(EROFS_I(inode)->datalayout)) {
-		int err = z_erofs_map_blocks_iter(inode, map, flags);
-
-		if (map->mpage) {
-			put_page(map->mpage);
-			map->mpage = NULL;
-		}
-		return err;
-	}
-	return erofs_map_blocks_flatmode(inode, map, flags);
-}
-
 static inline struct bio *erofs_read_raw_page(struct bio *bio,
 					      struct address_space *mapping,
 					      struct page *page,
@@ -159,7 +144,7 @@ submit_bio_retry:
 		erofs_blk_t blknr;
 		unsigned int blkoff;
 
-		err = erofs_map_blocks(inode, &map, EROFS_GET_BLOCKS_RAW);
+		err = erofs_map_blocks_flatmode(inode, &map, EROFS_GET_BLOCKS_RAW);
 		if (err)
 			goto err_out;
 
@@ -224,7 +209,7 @@ submit_bio_retry:
 		bio_set_dev(bio, sb->s_bdev);
 		bio->bi_iter.bi_sector = (sector_t)blknr <<
 			LOG_SECTORS_PER_BLOCK;
-		bio->bi_opf = REQ_OP_READ;
+		bio->bi_opf = REQ_OP_READ | (ra ? REQ_RAHEAD : 0);
 	}
 
 	err = bio_add_page(bio, page, PAGE_SIZE, 0);
@@ -280,46 +265,53 @@ static int erofs_raw_access_readpage(struct file *file, struct page *page)
 	return 0;
 }
 
+#define readahead_page(rac) erofs_readahead_page(rac, NULL)
+
+static void erofs_raw_access_readahead(struct readahead_control *rac)
+{
+	erofs_off_t last_block;
+	struct bio *bio = NULL;
+	struct page *page;
+
+	while ((page = readahead_page(rac))) {
+		prefetchw(&page->flags);
+
+		bio = erofs_read_raw_page(bio, rac->mapping, page, &last_block,
+				readahead_count(rac), true);
+
+		/* all the page errors are ignored when readahead */
+		if (IS_ERR(bio)) {
+			pr_err("%s, readahead error at page %lu of nid %llu\n",
+			       __func__, page->index,
+			       EROFS_I(rac->mapping->host)->nid);
+
+			bio = NULL;
+		}
+
+		put_page(page);
+	}
+
+	/* the rare case (end in gaps) */
+	if (bio)
+		submit_bio(bio);
+}
+
 static int erofs_raw_access_readpages(struct file *filp,
 				      struct address_space *mapping,
 				      struct list_head *pages,
 				      unsigned int nr_pages)
 {
-	erofs_off_t last_block;
-	struct bio *bio = NULL;
-	gfp_t gfp = readahead_gfp_mask(mapping);
 	struct page *page = list_last_entry(pages, struct page, lru);
-
+	struct readahead_control rac = {
+		.mapping = mapping,
+		.file = filp,
+		._index = page->index,
+		._nr_pages = nr_pages,
+		._pages = pages,
+		._gfp = readahead_gfp_mask(mapping),
+	};
 	trace_erofs_readpages(mapping->host, page, nr_pages, true);
-
-	for (; nr_pages; --nr_pages) {
-		page = list_entry(pages->prev, struct page, lru);
-
-		prefetchw(&page->flags);
-		list_del(&page->lru);
-
-		if (!add_to_page_cache_lru(page, mapping, page->index, gfp)) {
-			bio = erofs_read_raw_page(bio, mapping, page,
-						  &last_block, nr_pages, true);
-
-			/* all the page errors are ignored when readahead */
-			if (IS_ERR(bio)) {
-				pr_err("%s, readahead error at page %lu of nid %llu\n",
-				       __func__, page->index,
-				       EROFS_I(mapping->host)->nid);
-
-				bio = NULL;
-			}
-		}
-
-		/* pages could still be locked */
-		put_page(page);
-	}
-	DBG_BUGON(!list_empty(pages));
-
-	/* the rare case (end in gaps) */
-	if (bio)
-		submit_bio(bio);
+	erofs_raw_access_readahead(&rac);
 	return 0;
 }
 
@@ -337,7 +329,7 @@ static sector_t erofs_bmap(struct address_space *mapping, sector_t block)
 			return 0;
 	}
 
-	if (!erofs_map_blocks(inode, &map, EROFS_GET_BLOCKS_RAW))
+	if (!erofs_map_blocks_flatmode(inode, &map, EROFS_GET_BLOCKS_RAW))
 		return erofs_blknr(map.m_pa);
 
 	return 0;
