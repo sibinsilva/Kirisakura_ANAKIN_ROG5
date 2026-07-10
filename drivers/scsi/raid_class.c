@@ -223,7 +223,7 @@ int raid_component_add(struct raid_template *r,struct device *raid_dev,
 {
 	struct device *cdev =
 		attribute_container_find_class_device(&r->raid_attrs.ac,
-						      raid_dev);
+ 						      raid_dev);
 	struct raid_component *rc;
 	struct raid_data *rd = dev_get_drvdata(cdev);
 	int err;
@@ -256,7 +256,6 @@ err_out:
 	return err;
 }
 EXPORT_SYMBOL(raid_component_add);
-
 struct raid_template *
 raid_class_attach(struct raid_function_template *ft)
 {
