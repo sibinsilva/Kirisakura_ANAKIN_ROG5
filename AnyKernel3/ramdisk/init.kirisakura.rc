@@ -1,0 +1,23 @@
+on property:sys.boot_completed=1
+    # ── Schedutil WALT Rate Limits ────────────────────────────────────────
+    # Silver cluster (CPU0-3): fast upscale, slow downscale
+    write /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us 500
+    write /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us 20000
+    # Gold cluster (CPU4-6): fast upscale, slow downscale
+    write /sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us 500
+    write /sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us 20000
+    # Prime core (CPU7): fast upscale, slower downscale to avoid thrash
+    write /sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us 500
+    write /sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us 40000
+
+    # ── VM Tuning ─────────────────────────────────────────────────────────
+    write /proc/sys/vm/swappiness 60
+    write /proc/sys/vm/min_free_kbytes 262144
+
+    # ── F2FS GC Tuning (screen-off idle GC only) ─────────────────────────
+    write /sys/fs/f2fs/dm-0/gc_idle 2
+    write /sys/fs/f2fs/dm-1/gc_idle 2
+    write /sys/fs/f2fs/dm-2/gc_idle 2
+    write /sys/fs/f2fs/dm-3/gc_idle 2
+    write /sys/fs/f2fs/dm-4/gc_idle 2
+    write /sys/fs/f2fs/dm-5/gc_idle 2

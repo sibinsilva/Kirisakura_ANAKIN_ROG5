@@ -41,6 +41,9 @@ PATCH_VBMETA_FLAG=auto;
 # boot install
 dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
 
+# import init.kirisakura.rc into init.rc
+insert_line init.rc "import /init.kirisakura.rc" after "import /init.usb.rc"
+
 write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_boot ramdisk
 ## end boot install
 
