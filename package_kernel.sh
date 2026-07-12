@@ -30,7 +30,10 @@ cp "$SCRIPT_DIR/out_cfi/drivers/input/misc/sx932x_2nd.ko" \
 cp "$SCRIPT_DIR/out_cfi/drivers/input/touchscreen/ROG5_TP2/focaltech_fts_rog2.ko" \
    "$SCRIPT_DIR/AnyKernel3/modules/vendor/lib/modules/focaltech_fts_rog2.ko"
 
-echo "✓ Copied Image.gz, sx932x_2nd.ko, focaltech_fts_rog2.ko"
+cp "$SCRIPT_DIR/out_cfi/drivers/leds/leds-qpnp-vibrator-ldo.ko" \
+   "$SCRIPT_DIR/AnyKernel3/modules/vendor/lib/modules/leds_qpnp_vibrator_ldo.ko"
+
+echo "✓ Copied Image.gz, sx932x_2nd.ko, focaltech_fts_rog2.ko, leds_qpnp_vibrator_ldo.ko"
 
 # ── 3. Remove old zip and create fresh one ───────────────────────────────────
 echo "→ Packaging flashable zip..."
