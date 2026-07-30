@@ -42,7 +42,9 @@ LOCAL_MODULE_KBUILD_NAME  := rouleur_dlkm.ko
 LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+ifneq ($(wildcard $(DLKM_DIR)/AndroidKernelModule.mk),)
 include $(DLKM_DIR)/AndroidKernelModule.mk
+endif
 ###########################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE              := $(AUDIO_CHIPSET)_rouleur_slave.ko
@@ -50,7 +52,9 @@ LOCAL_MODULE_KBUILD_NAME  := rouleur_slave_dlkm.ko
 LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+ifneq ($(wildcard $(DLKM_DIR)/AndroidKernelModule.mk),)
 include $(DLKM_DIR)/AndroidKernelModule.mk
+endif
 ###########################################################
 include $(CLEAR_VARS)
 LOCAL_MODULE              := $(AUDIO_CHIPSET)_pm2250_spmi.ko
@@ -58,7 +62,9 @@ LOCAL_MODULE_KBUILD_NAME  := pm2250_spmi_dlkm.ko
 LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+ifneq ($(wildcard $(DLKM_DIR)/AndroidKernelModule.mk),)
 include $(DLKM_DIR)/AndroidKernelModule.mk
+endif
 ###########################################################
 
 endif # DLKM check

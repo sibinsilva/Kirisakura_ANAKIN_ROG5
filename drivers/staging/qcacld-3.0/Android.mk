@@ -154,7 +154,9 @@ else
     LOCAL_MODULE_PATH := $(TARGET_OUT)/lib/modules/$(WLAN_CHIPSET)
 endif
 
+ifneq ($(wildcard $(DLKM_DIR)/AndroidKernelModule.mk),)
 include $(DLKM_DIR)/AndroidKernelModule.mk
+endif
 ###########################################################
 
 # Create Symbolic link
