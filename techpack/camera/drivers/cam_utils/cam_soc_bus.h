@@ -54,7 +54,8 @@ struct cam_soc_bus_client {
 
 
 #if IS_REACHABLE(CONFIG_QCOM_BUS_SCALING) || \
-	IS_REACHABLE(CONFIG_INTERCONNECT_QCOM)
+	IS_REACHABLE(CONFIG_INTERCONNECT_QCOM) || \
+	IS_REACHABLE(CONFIG_INTERCONNECT)
 
 int cam_soc_bus_client_update_request(void *client, unsigned int idx);
 
