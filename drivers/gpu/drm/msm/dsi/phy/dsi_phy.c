@@ -606,7 +606,9 @@ static int dsi_phy_driver_probe(struct platform_device *pdev)
 			goto fail;
 	}
 
-	ret = devm_pm_runtime_enable(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	ret = devm_add_action_or_reset(&pdev->dev,
+			(void(*)(void *))pm_runtime_disable, &pdev->dev);
 	if (ret)
 		return ret;
 
