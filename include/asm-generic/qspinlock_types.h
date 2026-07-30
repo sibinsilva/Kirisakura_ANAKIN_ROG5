@@ -19,6 +19,8 @@
 #include <linux/atomic.h>
 #endif
 
+#include <asm/byteorder.h>
+
 typedef struct qspinlock {
 	union {
 		atomic_t val;
@@ -28,7 +30,7 @@ typedef struct qspinlock {
 		 * pending bit, we can allow better optimization of the lock
 		 * acquisition for the pending bit holder.
 		 */
-#ifdef __LITTLE_ENDIAN
+#if defined(__LITTLE_ENDIAN) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) || defined(__AARCH64EL__)
 		struct {
 			u8	locked;
 			u8	pending;
