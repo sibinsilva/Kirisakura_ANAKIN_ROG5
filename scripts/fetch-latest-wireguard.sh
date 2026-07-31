@@ -1,4 +1,5 @@
 #!/bin/bash
+exit 0
 set -e
 USER_AGENT="WireGuard-AndroidROMBuild/0.3 ($(uname -a))"
 
