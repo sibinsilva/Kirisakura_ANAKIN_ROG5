@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Kirisakura-Kernel (KernelSU Next Edition)
+kernel.string=Kirisakura-Kernel (SuKiSU Ultra Edition)
 do.devicecheck=1
 do.modules=1
 do.systemless=1
@@ -111,7 +111,7 @@ if [ -d /data/adb/modules/kirisakura_tuxera ] || [ -d /data/adb/modules_update/k
     ui_print "→ Removing old systemless Tuxera module...";
     rm -rf /data/adb/modules/kirisakura_tuxera
     rm -rf /data/adb/modules_update/kirisakura_tuxera
-    # For KernelSU-Next, we must make sure KSU detects the update
+    # For SuKiSU Ultra, we must make sure KSU detects the update
     if [ -d /data/adb/ksu ]; then
         touch /data/adb/ksu/update
     fi
