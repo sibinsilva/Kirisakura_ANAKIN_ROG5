@@ -14,7 +14,7 @@ static int version_proc_show(struct seq_file *m, void *v)
 	const char *release = utsname()->release;
 
 	if (!strncmp(release, "5.4.210", 7)) {
-		snprintf(proc_release, sizeof(proc_release), "5.4.279%s", release + 7);
+		snprintf(proc_release, sizeof(proc_release), "5.4.302%s", release + 7);
 	} else {
 		strlcpy(proc_release, release, sizeof(proc_release));
 	}
