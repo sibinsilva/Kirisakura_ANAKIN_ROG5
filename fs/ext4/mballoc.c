@@ -13,6 +13,7 @@
 #include "mballoc.h"
 #include <linux/log2.h>
 #include <linux/module.h>
+#include <linux/freezer.h>
 #include <linux/slab.h>
 #include <linux/nospec.h>
 #include <linux/backing-dev.h>
@@ -5321,6 +5322,9 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
 	end = EXT4_CLUSTERS_PER_GROUP(sb) - 1;
 
 	for (group = first_group; group <= last_group; group++) {
+		if (fatal_signal_pending(current) || freezing(current))
+			break;
+
 		grp = ext4_get_group_info(sb, group);
 		/* We only do this if the grp has never been initialized */
 		if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
