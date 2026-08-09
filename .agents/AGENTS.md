@@ -1,7 +1,7 @@
 # Custom Project Rules
 
 ## KernelSU-Next Version Fallback
-- **Rule:** When compiling KernelSU-Next inside this workspace, always verify that `KSU_VERSION_FALLBACK` in [Kbuild](file:///home/sibindev9746_gmail_com/Kirisakura_ANAKIN_ROG5/KernelSU-Next/kernel/Kbuild) is explicitly set to the desired version code (e.g., `33129`).
+- **Rule:** When compiling KernelSU-Next inside this workspace, always verify that `KSU_VERSION_FALLBACK` in [Kbuild](file:///home/sibindev9746_gmail_com/Kirisakura_ANAKIN_ROG5/KernelSU-Next/kernel/Kbuild) is explicitly set to the desired version code (e.g., `33188`).
 - **Context:** The dynamic Git repository check in the KernelSU-Next build system (`ifneq ($(GIT_ROOT),$(KERNEL_GIT_ROOT))`) evaluates to false because the directory is part of the main kernel tree, falling back to a lower version number if not overridden.
 
 ## KSUD_PATH Must Never Be Changed

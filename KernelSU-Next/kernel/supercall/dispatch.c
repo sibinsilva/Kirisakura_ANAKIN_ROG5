@@ -39,7 +39,7 @@ static int do_get_info(void __user *arg)
 {
 	struct ksu_get_info_cmd cmd = {.version = KERNEL_SU_VERSION, .flags = 0};
 
-	if (ksuver_override) {
+	if (ksuver_override > KERNEL_SU_VERSION) {
 		cmd.version = ksuver_override;
 	}
 	

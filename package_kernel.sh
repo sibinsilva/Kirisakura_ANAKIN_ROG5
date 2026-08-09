@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ZIP_NAME="Kirisakura-ANAKIN-ROG5-KSU-Next-v3.2.0-legacy-susfs.zip"
+ZIP_NAME="Kirisakura-ANAKIN-ROG5-KSU-Next-v3.3.0-legacy-susfs.zip"
 
 echo
 echo "========================================="
