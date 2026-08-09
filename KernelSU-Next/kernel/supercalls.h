@@ -5,6 +5,8 @@
 #include <linux/ioctl.h>
 #include "app_profile.h"
 
+#define KERNEL_SU_UAPI_VERSION 2
+
 // Magic numbers for reboot hook to install fd
 #define KSU_INSTALL_MAGIC1 0xDEADBEEF
 #define KSU_INSTALL_MAGIC2 0xCAFEBABE
@@ -24,6 +26,13 @@ struct ksu_become_daemon_cmd {
 };
 
 struct ksu_get_info_cmd {
+	__u32 version; // Output: KERNEL_SU_VERSION
+	__u32 flags; // Output: flags (bit 0: MODULE mode)
+	__u32 features; // Output: max feature ID supported
+	__u32 uapi_version; // Output: KERNEL_SU_UAPI_VERSION
+};
+
+struct ksu_get_info_legacy_cmd {
 	__u32 version; // Output: KERNEL_SU_VERSION
 	__u32 flags; // Output: flags (bit 0: MODULE mode)
 	__u32 features; // Output: max feature ID supported
@@ -129,7 +138,8 @@ struct ksu_add_try_umount_cmd {
 
 // IOCTL command definitions
 #define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)
-#define KSU_IOCTL_GET_INFO _IOC(_IOC_READ, 'K', 2, 0)
+#define KSU_IOCTL_GET_INFO _IOR('K', 2, struct ksu_get_info_cmd)
+#define KSU_IOCTL_GET_INFO_LEGACY _IOC(_IOC_READ, 'K', 2, 0)
 #define KSU_IOCTL_REPORT_EVENT _IOC(_IOC_WRITE, 'K', 3, 0)
 #define KSU_IOCTL_SET_SEPOLICY _IOC(_IOC_READ|_IOC_WRITE, 'K', 4, 0)
 #define KSU_IOCTL_CHECK_SAFEMODE _IOC(_IOC_READ, 'K', 5, 0)
