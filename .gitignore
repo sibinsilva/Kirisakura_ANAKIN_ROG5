@@ -84,6 +84,7 @@ modules.order
 #
 # We don't want to ignore the following even if they are dot-files
 #
+!.agents
 !.clang-format
 !.cocciconfig
 !.get_maintainer.ignore
@@ -146,6 +147,4 @@ x509.genkey
 # Clang's compilation database file
 /compile_commands.json
 *.zip
-apply_security_patches.sh
-package_kernel.sh
 security_patch_*.log
