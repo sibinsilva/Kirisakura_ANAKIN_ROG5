@@ -811,12 +811,9 @@ void lpm_stats_suspend_exit(void)
 {
 	struct timespec ts;
 	uint64_t exit_time = 0;
-#ifdef CONFIG_ASUS_POWER_DEBUG
-    //[PM_debug +++]
-    //irq debug
-    uint32_t ns;
-    //[PM_debug ---]
-#endif
+    /* Declared unconditionally: ASUSEvtlog() below references ns outside
+     * the CONFIG_ASUS_POWER_DEBUG guard that sets it. */
+    uint32_t ns = 0;
 
 	getnstimeofday(&ts);
 	exit_time = timespec_to_ns(&ts) - suspend_time_stats.enter_time;
