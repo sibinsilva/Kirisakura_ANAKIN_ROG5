@@ -18,6 +18,16 @@
 static DEFINE_SPINLOCK(channel_lock);
 static LIST_HEAD(usb_qdss_ch_list);
 
+/*
+ * f_qdss.h's qdss_log() macro (CONFIG_DYNAMIC_DEBUG path) references this
+ * but never declares it, and CONFIG_DYNAMIC_DEBUG was never enabled in this
+ * tree until now, so the gap was never compiled. ipc_log_string() is a safe
+ * no-op stub whenever CONFIG_IPC_LOGGING is off (its only other caller in
+ * this build), so a plain NULL context is sufficient - no real IPC logging
+ * is being set up here.
+ */
+static void *_qdss_ipc_log;
+
 static struct usb_interface_descriptor qdss_data_intf_desc = {
 	.bLength            =	sizeof(qdss_data_intf_desc),
 	.bDescriptorType    =	USB_DT_INTERFACE,
