@@ -604,11 +604,36 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+/*
+ * This callback is registered via drm_panel_notifier_register() (see
+ * gf_register_drm_callback() below), so the notifier chain it receives is
+ * populated by sde_kms.c's drm_panel_notifier_call_chain(connector->panel,
+ * event, &notifier_data) - a "struct drm_panel_notifier" payload
+ * ({int refresh_rate; void *data; uint32_t id;}, data pointing at a
+ * DRM_PANEL_BLANK_* enum int: UNBLANK=0, POWERDOWN=1, LP=2, FPS_CHANGE=3),
+ * not the legacy fb_notifier's "struct fb_event"/FB_BLANK_* pair this
+ * function was originally written against.
+ *
+ * Confirmed via a real capture-quality investigation (2026-08-22) that this
+ * mismatch made the whole block below dead code on this kernel: the val
+ * check on line "val == FB_EARLY_EVENT_BLANK" compared DRM's 0x02 against a
+ * locally #define'd legacy value of 0x10 - always false - so fb_black was
+ * never updated and GF_NET_EVENT_FB_BLACK/UNBLACK was never sent to the
+ * userspace daemon on any real screen blank/unblank, even though the outer
+ * gate (checking DRM_PANEL_EARLY_EVENT_BLANK/DRM_PANEL_EVENT_BLANK) let the
+ * callback fire correctly and log its "go to the ..." debug line every
+ * time (confirmed in dmesg). Even fixing only that outer check wouldn't be
+ * enough: the switch below compared against FB_BLANK_POWERDOWN (=4, a
+ * value local to this file, unrelated to DRM's numbering) while the real
+ * payload contains DRM_PANEL_BLANK_POWERDOWN (=1) - UNBLANK would have
+ * coincidentally matched (both are 0) but POWERDOWN never would have,
+ * always falling through to the no-op default case.
+ */
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
 {
 	struct gf_dev *gf_dev;
-	struct fb_event *evdata = data;
+	struct drm_panel_notifier *evdata = data;
 	unsigned int blank = 0;
 	char msg = 0;
 
@@ -620,10 +645,10 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 	pr_err("[GF] %s go to the goodix_fb_state_chg_callback value = %d\n",
 			__func__, (int)val);
 	gf_dev = container_of(nb, struct gf_dev, notifier);
-	if (evdata && evdata->data && val == FB_EARLY_EVENT_BLANK && gf_dev) {
+	if (evdata && evdata->data && val == DRM_PANEL_EARLY_EVENT_BLANK && gf_dev) {
 		blank = *(int *)(evdata->data);
 		switch (blank) {
-		case FB_BLANK_POWERDOWN:
+		case DRM_PANEL_BLANK_POWERDOWN:
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 1;
 #if defined(GF_NETLINK_ENABLE)
@@ -635,7 +660,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 #endif
 			}
 			break;
-		case FB_BLANK_UNBLANK:
+		case DRM_PANEL_BLANK_UNBLANK:
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 0;
 #if defined(GF_NETLINK_ENABLE)
