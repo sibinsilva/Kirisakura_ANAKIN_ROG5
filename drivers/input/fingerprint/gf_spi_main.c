@@ -45,6 +45,7 @@
 #include <linux/fb.h>
 #include <linux/pm_qos.h>
 #include <linux/cpufreq.h>
+#include <linux/workqueue.h>
 //#include <linux/wakelock.h>
 #include "gf_spi.h"
 #include "gf_wakelock.h"
@@ -685,6 +686,54 @@ static int drm_check_dt(struct device_node *np)
     return -ENODEV;
 }
 
+/*
+ * gf_spi consistently probes before the actual DRM panel driver has
+ * registered itself (confirmed via boot dmesg: gf_spi probes at ~1.999s and
+ * loses the race, while every other panel-dependent driver in this tree -
+ * FTS_TS at 2.050s, FTS_TS2 at 3.036s, BATTERY_CHG at 5.529s, EC_HID at
+ * 9.185s - probes later and succeeds cleanly). drm_check_dt()'s DT lookup
+ * itself is fine (of_count_phandle_with_args succeeds; only
+ * of_drm_find_panel() fails because the panel hasn't registered yet), so a
+ * short bounded retry is enough - not a real absence of the panel node.
+ * Without this, the notifier never gets registered for the rest of the
+ * boot, and the sensor never learns about display/illumination state
+ * changes needed for real image capture, even though the base SPI/TA
+ * protocol (touch detection, doWait handshake) keeps working regardless.
+ */
+#define GF_DRM_PANEL_RETRY_DELAY_MS 100
+#define GF_DRM_PANEL_RETRY_MAX 20
+
+static struct delayed_work gf_drm_panel_retry_work;
+static int gf_drm_panel_retry_count;
+
+static void gf_drm_panel_retry_work_func(struct work_struct *work)
+{
+	struct gf_dev *gf_dev = &gf;
+	struct device *dev = &gf_dev->spi->dev;
+	struct device_node *np = dev->of_node;
+	int ret = 0;
+
+	ret = drm_check_dt(np);
+	if (ret) {
+		gf_drm_panel_retry_count++;
+		if (gf_drm_panel_retry_count < GF_DRM_PANEL_RETRY_MAX) {
+			schedule_delayed_work(&gf_drm_panel_retry_work,
+				msecs_to_jiffies(GF_DRM_PANEL_RETRY_DELAY_MS));
+			return;
+		}
+		pr_err("[GF] parse drm-panel fail after %d retries, giving up",
+			gf_drm_panel_retry_count);
+		return;
+	}
+
+	goodix_noti_block.notifier_call = goodix_fb_state_chg_callback;
+	pr_err("[GF] RegisterDRMCallback: registering fb notification (after %d retries)",
+		gf_drm_panel_retry_count);
+	ret = drm_panel_notifier_register(active_panel, &goodix_noti_block);
+	if (ret)
+		pr_err("[GF] drm_panel_notifier_register fail: %d", ret);
+}
+
 void gf_register_drm_callback(struct gf_dev *gf_dev)
 {
 	struct device *dev = &gf_dev->spi->dev;
@@ -694,7 +743,12 @@ void gf_register_drm_callback(struct gf_dev *gf_dev)
 	pr_err("[GF] RegisterDRMCallback");
 	ret = drm_check_dt(np);
 	if (ret) {
-		pr_err("[GF] parse drm-panel fail");
+		pr_err("[GF] parse drm-panel fail, scheduling retry");
+		gf_drm_panel_retry_count = 0;
+		INIT_DELAYED_WORK(&gf_drm_panel_retry_work, gf_drm_panel_retry_work_func);
+		schedule_delayed_work(&gf_drm_panel_retry_work,
+			msecs_to_jiffies(GF_DRM_PANEL_RETRY_DELAY_MS));
+		return;
 	}
 
 	goodix_noti_block.notifier_call = goodix_fb_state_chg_callback;
