@@ -91,7 +91,15 @@ config INET
 	  Short answer: say Y.
 
 if INET
-source "net/wireguard/Kconfig"
+# net/wireguard/ source line removed for ANAKIN: this kernel tree's
+# scripts/fetch-latest-wireguard.sh (which is supposed to populate this
+# directory) is intentionally stubbed with an early `exit 0` - no live network
+# fetch during build. Since net/wireguard/ was never actually vendored by any
+# other means either, this unconditional `source` line failed Kconfig parsing
+# outright ("can't open file") regardless of CONFIG_WIREGUARD's value. Not in
+# scope for ANAKIN bringup (not in the project's priority order) - disabled
+# rather than vendoring real WireGuard source, matching CONFIG_WIREGUARD=n
+# below in kirisakura_defconfig.
 source "net/ipv4/Kconfig"
 source "net/ipv6/Kconfig"
 source "net/netlabel/Kconfig"
