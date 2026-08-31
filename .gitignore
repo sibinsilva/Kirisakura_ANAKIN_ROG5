@@ -148,3 +148,6 @@ x509.genkey
 /compile_commands.json
 *.zip
 security_patch_*.log
+
+# SukiSU-Ultra staging checkout (unused, not wired into the build)
+/KernelSU/

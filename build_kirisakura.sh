@@ -15,9 +15,9 @@ mkdir -p out_cfi
 export ARCH=arm64
 export SUBARCH=arm64
 export LOCALVERSION=""
-BASE_PATH=/home/sibindev9746_gmail_com/Android_Build/Clang_Google/linux-x86/clang-r450784e
-BASE_PATH_GCC=/home/sibindev9746_gmail_com/Android_Build/GCC_Google_Arm64
-BASE_PATH_GCC_32=/home/sibindev9746_gmail_com/Android_Build/GCC_Google_Arm32
+BASE_PATH=/home/sibinsilva1993_gmail_com/Android_Build/Clang_Google/linux-x86/clang-r450784e
+BASE_PATH_GCC=/home/sibinsilva1993_gmail_com/Android_Build/GCC_Google_Arm64
+BASE_PATH_GCC_32=/home/sibinsilva1993_gmail_com/Android_Build/GCC_Google_Arm32
 export DTC_EXT=/usr/bin/dtc
 export CLANG_PATH=$BASE_PATH/clang-r450784e/bin
 export PATH=${CLANG_PATH}:${PATH}

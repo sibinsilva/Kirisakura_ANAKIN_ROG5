@@ -42,13 +42,21 @@ zip -r9 "$SCRIPT_DIR/$ZIP_NAME" . \
 cd "$SCRIPT_DIR"
 echo "✓ Created $ZIP_NAME ($(du -sh $ZIP_NAME | cut -f1))"
 
-# ── 4. Upload to Litterbox (72 hours) ────────────────────────────────────────
-echo "→ Uploading to Litterbox..."
-UPLOAD_URL=$(curl -s \
+# ── 4. Upload to Litterbox (72 hours) or Tmpfiles ─────────────────────────────
+echo "→ Uploading..."
+UPLOAD_URL=$(curl -s -A "Mozilla/5.0" \
     -F "reqtype=fileupload" \
     -F "time=72h" \
     -F "fileToUpload=@$SCRIPT_DIR/$ZIP_NAME" \
-    https://litterbox.catbox.moe/resources/internals/api.php)
+    https://litterbox.catbox.moe/resources/internals/api.php || true)
+
+if [[ "$UPLOAD_URL" != https://* ]]; then
+    TMP_RESP=$(curl -s -F "file=@$SCRIPT_DIR/$ZIP_NAME" https://tmpfiles.org/api/v1/upload || true)
+    TMP_URL=$(echo "$TMP_RESP" | grep -o 'https://[^"]*' | head -n 1)
+    if [ -n "$TMP_URL" ]; then
+        UPLOAD_URL=$(echo "$TMP_URL" | sed 's|tmpfiles.org/|tmpfiles.org/dl/|')
+    fi
+fi
 
 if [[ "$UPLOAD_URL" == https://* ]]; then
     echo
@@ -60,5 +68,4 @@ if [[ "$UPLOAD_URL" == https://* ]]; then
 else
     echo "✗ Upload failed: $UPLOAD_URL"
     echo "  Zip is available locally at: $SCRIPT_DIR/$ZIP_NAME"
-    exit 1
 fi
