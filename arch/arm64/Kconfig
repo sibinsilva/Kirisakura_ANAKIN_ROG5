@@ -713,6 +713,24 @@ config QCOM_FALKOR_ERRATUM_1009
 
 	  If unsure, say Y.
 
+config ARM64_ERRATUM_4118414
+	bool "Cortex-*/Neoverse-*: Completion of affected memory accesses might not be guaranteed by completion of a TLBI"
+	default y
+	select ARM64_WORKAROUND_REPEAT_TLBI
+	help
+	  This option adds a workaround for erratum affecting several Arm
+	  Cortex-A and Neoverse cores (including Cortex-A76, A77, A78,
+	  A78C, A710, X1, X2, and Neoverse N1, N2, V1) whereby a broadcast
+	  TLBI;DSB sequence may complete before the global observation of
+	  writes which are translated by an affected TLB entry.
+
+	  On affected cores, some memory accesses might not be completed by
+	  broadcast TLB invalidation.
+
+	  This issue is also known as CVE-2025-10263.
+
+	  If unsure, say Y.
+
 config QCOM_QDF2400_ERRATUM_0065
 	bool "QDF2400 E0065: Incorrect GITS_TYPER.ITT_Entry_size"
 	default y
