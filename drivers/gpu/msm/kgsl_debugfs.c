@@ -27,44 +27,6 @@ static int _strict_get(void *data, u64 *val)
 
 DEFINE_DEBUGFS_ATTRIBUTE(_strict_fops, _strict_get, _strict_set, "%llu\n");
 
-static void kgsl_qdss_gfx_register_probe(struct kgsl_device *device)
-{
-	struct resource *res;
-
-	res = platform_get_resource_byname(device->pdev, IORESOURCE_MEM,
-							"qdss_gfx");
-
-	if (res == NULL)
-		return;
-
-	device->qdss_gfx_virt = devm_ioremap(&device->pdev->dev, res->start,
-							resource_size(res));
-
-	if (device->qdss_gfx_virt == NULL)
-		dev_warn(device->dev, "qdss_gfx ioremap failed\n");
-}
-
-static int _isdb_set(void *data, u64 val)
-{
-	struct kgsl_device *device = data;
-
-	if (device->qdss_gfx_virt == NULL)
-		kgsl_qdss_gfx_register_probe(device);
-
-	device->set_isdb_breakpoint = val ? true : false;
-	return 0;
-}
-
-static int _isdb_get(void *data, u64 *val)
-{
-	struct kgsl_device *device = data;
-
-	*val = device->set_isdb_breakpoint ? 1 : 0;
-	return 0;
-}
-
-DEFINE_DEBUGFS_ATTRIBUTE(_isdb_fops, _isdb_get, _isdb_set, "%llu\n");
-
 static int globals_print(struct seq_file *s, void *unused)
 {
 	struct kgsl_device *device = s->private;
@@ -111,8 +73,6 @@ static const struct file_operations global_fops = {
 
 void kgsl_device_debugfs_init(struct kgsl_device *device)
 {
-	struct dentry *snapshot_dir;
-
 	if (IS_ERR_OR_NULL(kgsl_debugfs_dir))
 		return;
 
@@ -121,10 +81,6 @@ void kgsl_device_debugfs_init(struct kgsl_device *device)
 
 	debugfs_create_file("globals", 0444, device->d_debugfs, device,
 		&global_fops);
-
-	snapshot_dir = debugfs_create_dir("snapshot", kgsl_debugfs_dir);
-	debugfs_create_file("break_isdb", 0644, snapshot_dir, device,
-		&_isdb_fops);
 }
 
 void kgsl_device_debugfs_close(struct kgsl_device *device)

@@ -45,6 +45,7 @@
 #include <linux/fb.h>
 #include <linux/pm_qos.h>
 #include <linux/cpufreq.h>
+#include <linux/workqueue.h>
 //#include <linux/wakelock.h>
 #include "gf_spi.h"
 #include "gf_wakelock.h"
@@ -603,11 +604,36 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+/*
+ * This callback is registered via drm_panel_notifier_register() (see
+ * gf_register_drm_callback() below), so the notifier chain it receives is
+ * populated by sde_kms.c's drm_panel_notifier_call_chain(connector->panel,
+ * event, &notifier_data) - a "struct drm_panel_notifier" payload
+ * ({int refresh_rate; void *data; uint32_t id;}, data pointing at a
+ * DRM_PANEL_BLANK_* enum int: UNBLANK=0, POWERDOWN=1, LP=2, FPS_CHANGE=3),
+ * not the legacy fb_notifier's "struct fb_event"/FB_BLANK_* pair this
+ * function was originally written against.
+ *
+ * Confirmed via a real capture-quality investigation (2026-08-22) that this
+ * mismatch made the whole block below dead code on this kernel: the val
+ * check on line "val == FB_EARLY_EVENT_BLANK" compared DRM's 0x02 against a
+ * locally #define'd legacy value of 0x10 - always false - so fb_black was
+ * never updated and GF_NET_EVENT_FB_BLACK/UNBLACK was never sent to the
+ * userspace daemon on any real screen blank/unblank, even though the outer
+ * gate (checking DRM_PANEL_EARLY_EVENT_BLANK/DRM_PANEL_EVENT_BLANK) let the
+ * callback fire correctly and log its "go to the ..." debug line every
+ * time (confirmed in dmesg). Even fixing only that outer check wouldn't be
+ * enough: the switch below compared against FB_BLANK_POWERDOWN (=4, a
+ * value local to this file, unrelated to DRM's numbering) while the real
+ * payload contains DRM_PANEL_BLANK_POWERDOWN (=1) - UNBLANK would have
+ * coincidentally matched (both are 0) but POWERDOWN never would have,
+ * always falling through to the no-op default case.
+ */
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
 {
 	struct gf_dev *gf_dev;
-	struct fb_event *evdata = data;
+	struct drm_panel_notifier *evdata = data;
 	unsigned int blank = 0;
 	char msg = 0;
 
@@ -619,10 +645,10 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 	pr_err("[GF] %s go to the goodix_fb_state_chg_callback value = %d\n",
 			__func__, (int)val);
 	gf_dev = container_of(nb, struct gf_dev, notifier);
-	if (evdata && evdata->data && val == FB_EARLY_EVENT_BLANK && gf_dev) {
+	if (evdata && evdata->data && val == DRM_PANEL_EARLY_EVENT_BLANK && gf_dev) {
 		blank = *(int *)(evdata->data);
 		switch (blank) {
-		case FB_BLANK_POWERDOWN:
+		case DRM_PANEL_BLANK_POWERDOWN:
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 1;
 #if defined(GF_NETLINK_ENABLE)
@@ -634,7 +660,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 #endif
 			}
 			break;
-		case FB_BLANK_UNBLANK:
+		case DRM_PANEL_BLANK_UNBLANK:
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 0;
 #if defined(GF_NETLINK_ENABLE)
@@ -685,6 +711,54 @@ static int drm_check_dt(struct device_node *np)
     return -ENODEV;
 }
 
+/*
+ * gf_spi consistently probes before the actual DRM panel driver has
+ * registered itself (confirmed via boot dmesg: gf_spi probes at ~1.999s and
+ * loses the race, while every other panel-dependent driver in this tree -
+ * FTS_TS at 2.050s, FTS_TS2 at 3.036s, BATTERY_CHG at 5.529s, EC_HID at
+ * 9.185s - probes later and succeeds cleanly). drm_check_dt()'s DT lookup
+ * itself is fine (of_count_phandle_with_args succeeds; only
+ * of_drm_find_panel() fails because the panel hasn't registered yet), so a
+ * short bounded retry is enough - not a real absence of the panel node.
+ * Without this, the notifier never gets registered for the rest of the
+ * boot, and the sensor never learns about display/illumination state
+ * changes needed for real image capture, even though the base SPI/TA
+ * protocol (touch detection, doWait handshake) keeps working regardless.
+ */
+#define GF_DRM_PANEL_RETRY_DELAY_MS 100
+#define GF_DRM_PANEL_RETRY_MAX 20
+
+static struct delayed_work gf_drm_panel_retry_work;
+static int gf_drm_panel_retry_count;
+
+static void gf_drm_panel_retry_work_func(struct work_struct *work)
+{
+	struct gf_dev *gf_dev = &gf;
+	struct device *dev = &gf_dev->spi->dev;
+	struct device_node *np = dev->of_node;
+	int ret = 0;
+
+	ret = drm_check_dt(np);
+	if (ret) {
+		gf_drm_panel_retry_count++;
+		if (gf_drm_panel_retry_count < GF_DRM_PANEL_RETRY_MAX) {
+			schedule_delayed_work(&gf_drm_panel_retry_work,
+				msecs_to_jiffies(GF_DRM_PANEL_RETRY_DELAY_MS));
+			return;
+		}
+		pr_err("[GF] parse drm-panel fail after %d retries, giving up",
+			gf_drm_panel_retry_count);
+		return;
+	}
+
+	goodix_noti_block.notifier_call = goodix_fb_state_chg_callback;
+	pr_err("[GF] RegisterDRMCallback: registering fb notification (after %d retries)",
+		gf_drm_panel_retry_count);
+	ret = drm_panel_notifier_register(active_panel, &goodix_noti_block);
+	if (ret)
+		pr_err("[GF] drm_panel_notifier_register fail: %d", ret);
+}
+
 void gf_register_drm_callback(struct gf_dev *gf_dev)
 {
 	struct device *dev = &gf_dev->spi->dev;
@@ -694,7 +768,12 @@ void gf_register_drm_callback(struct gf_dev *gf_dev)
 	pr_err("[GF] RegisterDRMCallback");
 	ret = drm_check_dt(np);
 	if (ret) {
-		pr_err("[GF] parse drm-panel fail");
+		pr_err("[GF] parse drm-panel fail, scheduling retry");
+		gf_drm_panel_retry_count = 0;
+		INIT_DELAYED_WORK(&gf_drm_panel_retry_work, gf_drm_panel_retry_work_func);
+		schedule_delayed_work(&gf_drm_panel_retry_work,
+			msecs_to_jiffies(GF_DRM_PANEL_RETRY_DELAY_MS));
+		return;
 	}
 
 	goodix_noti_block.notifier_call = goodix_fb_state_chg_callback;
