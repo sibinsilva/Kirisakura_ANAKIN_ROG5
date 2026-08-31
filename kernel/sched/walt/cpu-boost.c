@@ -51,6 +51,14 @@ static struct work_struct input_boost_work;
 
 static bool input_boost_enabled;
 
+/*
+ * Default per-cluster input-boost floor, as a percentage of that
+ * cluster's max frequency. Scaling by percentage rather than hard-coding
+ * kHz values keeps this correct across clusters/SoCs without needing the
+ * real OPP table, which on this platform lives in firmware, not DT.
+ */
+#define DEFAULT_INPUT_BOOST_PCT 70
+
 static unsigned int input_boost_ms = 40;
 show_one(input_boost_ms);
 store_one(input_boost_ms);
@@ -363,7 +371,10 @@ int cpu_boost_init(void)
 			return ret;
 		}
 
+		s->input_boost_freq = (policy->max * DEFAULT_INPUT_BOOST_PCT) / 100;
 	}
+
+	input_boost_enabled = true;
 
 	cpu_boost_kobj = kobject_create_and_add("cpu_boost",
 						&cpu_subsys.dev_root->kobj);
