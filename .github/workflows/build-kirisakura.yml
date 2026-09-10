@@ -46,7 +46,7 @@ jobs:
           mkdir -p toolchains
           curl -sSL "${CLANG_TARBALL_URL}" -o clang.tar.zst
           mkdir -p toolchains/clang
-          tar -I zstd -xf clang.tar.zst -C toolchains/clang --strip-components=1
+          tar -I zstd -xf clang.tar.zst -C toolchains/clang --strip-components=2 clang-r450784e/clang-r450784e
           rm -f clang.tar.zst
 
       - name: Cache GCC arm64 toolchain
