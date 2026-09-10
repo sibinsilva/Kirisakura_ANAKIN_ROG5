@@ -101,7 +101,7 @@ void reconfig_game_reg(bool reconfig) {
 
 }
 
-void set_rotation_mode()
+void set_rotation_mode(void)
 {
     struct fts_ts_data *ts_data = fts_data;
     int ret;

@@ -136,7 +136,7 @@ void process_event_log_bin_file(void);
 
 /** 
  */
-void print_usage() {
+void print_usage(void) {
     printf("Usage: trdd [-erdh] [-o outfile] [infile]\n");
     printf("       -d: print deep_trace.bin (binary) file\n");
     printf("       -e: print event_log.bin (binary) file\n");

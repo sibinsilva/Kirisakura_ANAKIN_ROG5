@@ -804,7 +804,7 @@ void save_phone_hang_log(int delta)
 EXPORT_SYMBOL(save_phone_hang_log);
 
 
-void save_last_logcat_kmsg(){
+void save_last_logcat_kmsg(void){
 	
 	char *last_logcat_buffer = (char *)LOGCAT_BUFFER;
 	char *last_shutdown_log = (char *)PRINTK_BUFFER_VA;
