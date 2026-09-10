@@ -87,9 +87,22 @@ jobs:
           [ -n "$VERSION" ]
           rm -rf net/wireguard
           mkdir -p net/wireguard
-          curl -A "$USER_AGENT" --http1.1 -f -LsS --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors \
-            "https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-$VERSION.tar.xz" \
-            -o wireguard.tar.xz
+
+          # git.zx2c4.com closes its TLS connection without a proper close_notify,
+          # so curl reports an error (exit 18/56) even when the file downloaded
+          # completely and correctly. Don't trust curl's exit code here - verify
+          # the archive itself is valid and retry until it actually is.
+          URL="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-$VERSION.tar.xz"
+          for attempt in 1 2 3 4 5; do
+            curl -A "$USER_AGENT" --http1.1 -LsS --connect-timeout 30 "$URL" -o wireguard.tar.xz || true
+            if tar -tJf wireguard.tar.xz > /dev/null 2>&1; then
+              break
+            fi
+            echo "attempt $attempt: download incomplete/corrupt, retrying..."
+            sleep 3
+          done
+          tar -tJf wireguard.tar.xz > /dev/null
+
           tar -C net/wireguard -xJf wireguard.tar.xz --strip-components=2 "wireguard-linux-compat-$VERSION/src"
           rm -f wireguard.tar.xz
           sed -i 's/tristate/bool/;s/default m/default y/;' net/wireguard/Kconfig
