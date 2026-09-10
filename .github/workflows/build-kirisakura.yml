@@ -134,6 +134,8 @@ jobs:
           fi
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
 
+          mkdir -p AnyKernel3/modules/vendor/lib/modules
+
           cp out_cfi/arch/arm64/boot/Image.gz AnyKernel3/Image.gz
           cp out_cfi/drivers/input/misc/sx932x_2nd.ko \
              AnyKernel3/modules/vendor/lib/modules/sx932x_2nd.ko
