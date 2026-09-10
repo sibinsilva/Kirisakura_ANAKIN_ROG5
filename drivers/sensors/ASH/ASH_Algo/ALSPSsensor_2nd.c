@@ -1387,7 +1387,7 @@ static int mproximity_store_selection(int selection)
 }
 
 /*For load calibration data*/
-static int mproximity_store_load_calibration_data(void)
+static int mproximity_store_load_calibration_data()
 {
 	int ret=0;
 	

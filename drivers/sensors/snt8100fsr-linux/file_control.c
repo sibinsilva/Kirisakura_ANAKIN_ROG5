@@ -936,7 +936,7 @@ void grip_raw_enable_func(int val){
 	mutex_unlock(&snt8100fsr_g->ap_lock);
 }
 
-static int grip_all_gesture_status(void){
+static int grip_all_gesture_status(){
 	if(grip_status_g->G_SQUEEZE_EN[0] == 1 || grip_status_g->G_SQUEEZE_EN[1] == 1
 		|| grip_status_g->G_TAP_EN[0] == 1 || grip_status_g->G_TAP_EN[1] == 1
 		|| grip_status_g->G_TAP_EN[2] == 1 || grip_status_g->G_TAP_EN[3] == 1
@@ -948,7 +948,7 @@ static int grip_all_gesture_status(void){
 	}
 }
 
-int grip_game_gesture_status(void){
+int grip_game_gesture_status(){
 	if(grip_tap_gesture_status() || grip_slide_gesture_status() ||
 	grip_swipe_gesture_status()){
 		return 1;
@@ -957,7 +957,7 @@ int grip_game_gesture_status(void){
 	}
 }
 
-static int grip_tap_gesture_status(void){
+static int grip_tap_gesture_status(){
 	if(grip_status_g->G_TAP_EN[0] == 1 || grip_status_g->G_TAP_EN[1] == 1
 		|| grip_status_g->G_TAP_EN[2] == 1 || grip_status_g->G_TAP_EN[3] == 1){
 		return 1;
@@ -966,7 +966,7 @@ static int grip_tap_gesture_status(void){
 	}
 }
 
-static int grip_swipe_gesture_status(void){
+static int grip_swipe_gesture_status(){
 	if(grip_status_g->G_SWIPE_EN[0] == 1 || grip_status_g->G_SWIPE_EN[1] == 1){
 		return 1;
 	}else{ /* No gesture or raw enable */
@@ -974,7 +974,7 @@ static int grip_swipe_gesture_status(void){
 	}
 }
 
-static int grip_slide_gesture_status(void){
+static int grip_slide_gesture_status(){
 	if(grip_status_g->G_SLIDE_EN[0] == 1 || grip_status_g->G_SLIDE_EN[1] == 1){
 		return 1;
 	}else{ /* No gesture or raw enable */
@@ -982,7 +982,7 @@ static int grip_slide_gesture_status(void){
 	}
 }
 
-static void grip_checkToLowPower_noLock(void){
+static void grip_checkToLowPower_noLock(){
 	if(grip_all_gesture_status()){
 		/* Do nothing */
 	}else{ /* No gesture or raw enable */

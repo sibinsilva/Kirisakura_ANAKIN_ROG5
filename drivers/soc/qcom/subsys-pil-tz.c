@@ -1363,7 +1363,7 @@ static int subsys_setup_irqs(struct platform_device *pdev)
 }
 
 
-static int antenna_switch_enable_vreg(void)
+static int antenna_switch_enable_vreg()
 {
 	int ret = 0;
 	struct antenna_switch_vreg *vreg_antenna = &priv_switch_vreg;
@@ -1400,7 +1400,7 @@ static int antenna_switch_enable_vreg(void)
 
 	return ret;
 }
-static int antenna_switch_disable_vreg(void)
+static int antenna_switch_disable_vreg()
 {
 	int ret = 0;
 	struct antenna_switch_vreg *vreg_antenna = &priv_switch_vreg;

@@ -271,7 +271,7 @@ static void display_set_hbm_mode(int mode)
 }
 
 // exit idle mode
-static void display_exit_idle_mode(void)
+static void display_exit_idle_mode()
 {
 	int rc = 0;
 

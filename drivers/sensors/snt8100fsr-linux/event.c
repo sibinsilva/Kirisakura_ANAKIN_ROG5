@@ -2867,7 +2867,7 @@ void enable_boot_init_reg_req(struct snt8100fsr *snt8100fsr,
 }
 
 extern int aw8697_trig_control(int num, bool enable);
-static void Grip_check_K_and_frame(void){
+static void Grip_check_K_and_frame(){
 	int ret;
 	uint16_t disable_K = 1; //enable_bang = 1;
 
