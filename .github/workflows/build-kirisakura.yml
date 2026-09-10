@@ -9,7 +9,7 @@ on:
         default: ""
 
 env:
-  CLANG_VERSION: clang-r450784e
+  CLANG_VERSION: clang-r547379
   GCC_BRANCH: main-kernel
 
 permissions:
