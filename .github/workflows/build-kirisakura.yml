@@ -12,6 +12,7 @@ env:
   CLANG_VERSION: clang-r450784e
   CLANG_TARBALL_URL: https://github.com/sibinsilva/Kirisakura_ANAKIN_ROG5/releases/download/toolchain-clang-r450784e/clang-r450784e.tar.zst
   GCC_BRANCH: main-kernel
+  WIREGUARD_TARBALL_URL: https://github.com/sibinsilva/Kirisakura_ANAKIN_ROG5/releases/download/wireguard-linux-compat-1.0.20220627/wireguard-linux-compat-1.0.20220627.tar.xz
 
 permissions:
   contents: write
@@ -81,32 +82,18 @@ jobs:
       - name: Fetch WireGuard source
         run: |
           set -e
-          USER_AGENT="WireGuard-AndroidROMBuild/0.3 (github-actions)"
-          VERSION=$(curl -A "$USER_AGENT" --http1.1 -LSs --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors \
-            https://build.wireguard.com/distros.txt \
-            | awk '$1=="upstream" && $2=="linuxcompat" {print $3; exit}')
-          [ -n "$VERSION" ]
+          # git.zx2c4.com is unreliable from GitHub Actions runners - it
+          # consistently truncates the tail of the tar.xz stream, tripping
+          # both curl's and tar's own error detection even when every real
+          # file already made it to disk intact. Use our own hosted mirror
+          # (fetched and verified locally) instead of depending on it.
           rm -rf net/wireguard
           mkdir -p net/wireguard
-
-          # git.zx2c4.com closes its TLS connection without a proper close_notify,
-          # so curl reports an error (exit 18/56) even when the file downloaded
-          # completely and correctly. Don't trust curl's exit code here - verify
-          # the archive itself is valid and retry until it actually is.
-          URL="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-$VERSION.tar.xz"
-          for attempt in 1 2 3 4 5; do
-            curl -A "$USER_AGENT" --http1.1 -LsS --connect-timeout 30 "$URL" -o wireguard.tar.xz || true
-            if tar -tJf wireguard.tar.xz > /dev/null 2>&1; then
-              break
-            fi
-            echo "attempt $attempt: download incomplete/corrupt, retrying..."
-            sleep 3
-          done
+          curl -sSL "${WIREGUARD_TARBALL_URL}" -o wireguard.tar.xz
           tar -tJf wireguard.tar.xz > /dev/null
-
-          tar -C net/wireguard -xJf wireguard.tar.xz --strip-components=2 "wireguard-linux-compat-$VERSION/src"
+          tar -C net/wireguard -xJf wireguard.tar.xz
           rm -f wireguard.tar.xz
-          sed -i 's/tristate/bool/;s/default m/default y/;' net/wireguard/Kconfig
+          test -f net/wireguard/crypto/Kbuild.include
           touch net/wireguard/.check
 
       - name: Build kernel
