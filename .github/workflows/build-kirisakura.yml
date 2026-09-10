@@ -37,16 +37,10 @@ jobs:
           # the feature itself is gated upstream.
           KSUD="KernelSU/kernel/runtime/ksud.c"
           sed -i \
-            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/{i\
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-              a\
-#endif
-            }' \
-            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/{i\
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-              a\
-#endif
-            }' \
+            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
+            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/a\#endif' \
+            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
+            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/a\#endif' \
             "$KSUD"
           grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' "$KSUD"
 
