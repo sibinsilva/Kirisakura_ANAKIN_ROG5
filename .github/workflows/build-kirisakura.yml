@@ -27,6 +27,38 @@ jobs:
           fetch-depth: 1
           submodules: true
 
+      - name: Patch KernelSU (SukiSU-Ultra) submodule for pre-5.10 kernels
+        run: |
+          set -e
+          # ksud.c calls ksu_selinux_hide_handle_{post_fs_data,second_stage}()
+          # unconditionally, but ksu.c only compiles that feature in
+          # (selinux_hide.h/.c) on kernel >= 5.10 - this kernel is 5.4, so
+          # the calls are left undeclared. Gate the call sites the same way
+          # the feature itself is gated upstream.
+          KSUD="KernelSU/kernel/runtime/ksud.c"
+          sed -i \
+            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/{i\
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+              a\
+#endif
+            }' \
+            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/{i\
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+              a\
+#endif
+            }' \
+            "$KSUD"
+          grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' "$KSUD"
+
+          # event.c has one stray call to the bare kernel API
+          # strncpy_from_user_nofault() (doesn't exist pre-5.8) instead of
+          # this project's own compat wrapper ksu_strncpy_from_user_nofault(),
+          # which every other call site in the codebase correctly uses.
+          sed -i \
+            's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' \
+            KernelSU/kernel/sulog/event.c
+          grep -c 'ksu_strncpy_from_user_nofault' KernelSU/kernel/sulog/event.c
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
