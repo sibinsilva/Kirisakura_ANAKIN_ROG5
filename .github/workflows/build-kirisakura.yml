@@ -82,13 +82,13 @@ jobs:
         run: |
           set -e
           USER_AGENT="WireGuard-AndroidROMBuild/0.3 (github-actions)"
-          VERSION=$(curl -A "$USER_AGENT" -LSs --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused \
+          VERSION=$(curl -A "$USER_AGENT" --http1.1 -LSs --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors \
             https://build.wireguard.com/distros.txt \
             | awk '$1=="upstream" && $2=="linuxcompat" {print $3; exit}')
           [ -n "$VERSION" ]
           rm -rf net/wireguard
           mkdir -p net/wireguard
-          curl -A "$USER_AGENT" -LsS --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused \
+          curl -A "$USER_AGENT" --http1.1 -LsS --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors \
             "https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-$VERSION.tar.xz" \
             | tar -C net/wireguard -xJf - --strip-components=2 "wireguard-linux-compat-$VERSION/src"
           sed -i 's/tristate/bool/;s/default m/default y/;' net/wireguard/Kconfig
