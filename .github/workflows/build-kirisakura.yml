@@ -87,9 +87,11 @@ jobs:
           [ -n "$VERSION" ]
           rm -rf net/wireguard
           mkdir -p net/wireguard
-          curl -A "$USER_AGENT" --http1.1 -LsS --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors \
+          curl -A "$USER_AGENT" --http1.1 -f -LsS --connect-timeout 30 --retry 5 --retry-delay 3 --retry-connrefused --retry-all-errors \
             "https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-$VERSION.tar.xz" \
-            | tar -C net/wireguard -xJf - --strip-components=2 "wireguard-linux-compat-$VERSION/src"
+            -o wireguard.tar.xz
+          tar -C net/wireguard -xJf wireguard.tar.xz --strip-components=2 "wireguard-linux-compat-$VERSION/src"
+          rm -f wireguard.tar.xz
           sed -i 's/tristate/bool/;s/default m/default y/;' net/wireguard/Kconfig
           touch net/wireguard/.check
 
