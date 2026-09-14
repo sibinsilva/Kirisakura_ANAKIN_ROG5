@@ -1,0 +1,96 @@
+
+name: Cherry-pick dev commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to cherry-pick into"
+        required: true
+        type: string
+      commit_sha:
+        description: "Commit SHA from dev"
+        required: true
+        type: string
+      dry_run:
+        description: "Test cherry-pick without pushing"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  cherry-pick:
+    name: Cherry-pick to target
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ inputs.target_branch }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate commit
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+
+          if ! [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Error: Enter a full 40-character commit SHA."
+            exit 1
+          fi
+
+          git fetch origin dev --no-tags
+
+          if ! git cat-file -e "$COMMIT_SHA^{commit}" 2>/dev/null; then
+            echo "Error: Commit does not exist."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" origin/dev; then
+            echo "Error: Commit is not reachable from dev."
+            exit 1
+          fi
+
+          echo "Commit is valid and belongs to dev."
+          git show --no-patch --format=fuller "$COMMIT_SHA"
+
+      - name: Cherry-pick commit
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ inputs.target_branch }}" = "dev" ]; then
+            echo "Error: Target branch cannot be dev."
+            exit 1
+          fi
+
+          git cherry-pick "$COMMIT_SHA"
+
+      - name: Dry run result
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "Dry run successful."
+          echo "No changes will be pushed."
+          git show --stat --oneline HEAD
+
+      - name: Push changes
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          git push origin HEAD:${{ inputs.target_branch }}
+
+          echo "Cherry-pick completed successfully."
+          
