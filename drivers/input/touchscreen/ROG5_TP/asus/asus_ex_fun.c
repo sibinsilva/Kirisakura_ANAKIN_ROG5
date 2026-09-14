@@ -363,6 +363,25 @@ static ssize_t asus_ex_proc_fpxy_read(struct file *file, char __user *buf, size_
 	return ret;  
 }
 
+static ssize_t asus_ex_proc_fpxy_write(struct file *filp, const char *buff, size_t len, loff_t *off)
+{
+	char messages[64];
+	struct fts_ts_data *ts_data = fts_data;
+	int x = 0, y = 0;
+
+	if (len >= sizeof(messages))
+		len = sizeof(messages) - 1;
+	if (copy_from_user(messages, buff, len))
+		return -EFAULT;
+	messages[len] = '\0';
+
+	if (sscanf(messages, "%d,%d", &x, &y) == 2) {
+		ts_data->fp_x = x;
+		ts_data->fp_y = y;
+	}
+	return len;
+}
+
 static ssize_t asus_ex_proc_glove_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	int len = 0;
@@ -514,6 +533,7 @@ static struct file_operations asus_ex_proc_glove_ops = {
 };
 
 static struct file_operations asus_ex_proc_fpxy_ops = {
+	.write = asus_ex_proc_fpxy_write,
 	.read  = asus_ex_proc_fpxy_read,
 };
 
