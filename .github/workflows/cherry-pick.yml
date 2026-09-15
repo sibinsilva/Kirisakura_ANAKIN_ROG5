@@ -1,0 +1,173 @@
+name: Cherry-pick dev commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to cherry-pick into"
+        required: true
+        type: choice
+        options:
+          - release/ksu-next
+          - release/sukisu-ultra
+          - release/lineage-20
+          - release/derpfest-13
+      commit_sha:
+        description: "Commit SHA from dev (full or short 7+ hex)"
+        required: true
+        type: string
+      dry_run:
+        description: "Test cherry-pick without pushing"
+        required: true
+        default: false
+        type: boolean
+      trigger_build:
+        description: "Automatically trigger kernel build on target branch after push"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  cherry-pick:
+    name: Cherry-pick to target
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ inputs.target_branch }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate target and commit
+        id: validate
+        env:
+          INPUT_SHA: ${{ inputs.commit_sha }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          set -euo pipefail
+
+          if [ "$TARGET_BRANCH" = "dev" ]; then
+            echo "::error::Target branch cannot be dev."
+            exit 1
+          fi
+
+          # Trim whitespace
+          CLEAN_SHA="$(echo "$INPUT_SHA" | tr -d '[:space:]')"
+
+          if ! [[ "$CLEAN_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            echo "::error::Enter a valid commit SHA (7 to 40 hex characters)."
+            exit 1
+          fi
+
+          git fetch origin dev --no-tags
+
+          if ! FULL_SHA=$(git rev-parse --verify "${CLEAN_SHA}^{commit}" 2>/dev/null); then
+            echo "::error::Commit '$CLEAN_SHA' does not exist."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$FULL_SHA" origin/dev; then
+            echo "::error::Commit $FULL_SHA is not reachable from origin/dev."
+            exit 1
+          fi
+
+          COMMIT_TITLE="$(git log -1 --format='%s' "$FULL_SHA")"
+          COMMIT_AUTHOR="$(git log -1 --format='%an <%ae>' "$FULL_SHA")"
+          COMMIT_DATE="$(git log -1 --format='%cd' --date=short "$FULL_SHA")"
+
+          echo "commit_sha=$FULL_SHA" >> "$GITHUB_OUTPUT"
+          echo "commit_title=$COMMIT_TITLE" >> "$GITHUB_OUTPUT"
+          echo "commit_author=$COMMIT_AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "commit_date=$COMMIT_DATE" >> "$GITHUB_OUTPUT"
+
+          echo "Validated commit: $FULL_SHA ($COMMIT_TITLE)"
+
+      - name: Check if already present
+        env:
+          COMMIT_SHA: ${{ steps.validate.outputs.commit_sha }}
+          COMMIT_TITLE: ${{ steps.validate.outputs.commit_title }}
+        run: |
+          set -euo pipefail
+
+          if git log --grep="^${COMMIT_TITLE}$" -n 1 --oneline | grep -q .; then
+            echo "::warning::A commit with subject '${COMMIT_TITLE}' is already present in this branch."
+          fi
+
+      - name: Cherry-pick commit
+        env:
+          COMMIT_SHA: ${{ steps.validate.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+
+          # Cherry-pick with -x to record provenance
+          git cherry-pick -x "$COMMIT_SHA"
+
+      - name: Push changes
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          git push origin HEAD:${{ inputs.target_branch }}
+          echo "Successfully pushed commit to ${{ inputs.target_branch }}."
+
+      - name: Trigger Kernel Build
+        if: ${{ !inputs.dry_run && inputs.trigger_build }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "Triggering build-kirisakura.yml on branch '${{ inputs.target_branch }}'..."
+          gh workflow run build-kirisakura.yml --ref "${{ inputs.target_branch }}"
+          echo "Kernel build dispatched successfully on ${{ inputs.target_branch }}."
+
+      - name: Generate summary
+        if: always() && steps.validate.outcome == 'success'
+        env:
+          COMMIT_SHA: ${{ steps.validate.outputs.commit_sha }}
+          COMMIT_TITLE: ${{ steps.validate.outputs.commit_title }}
+          COMMIT_AUTHOR: ${{ steps.validate.outputs.commit_author }}
+          COMMIT_DATE: ${{ steps.validate.outputs.commit_date }}
+          IS_DRY_RUN: ${{ inputs.dry_run }}
+          IS_TRIGGER_BUILD: ${{ inputs.trigger_build }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          STATUS="✅ Success"
+          if [ "${{ job.status }}" != "success" ]; then
+            STATUS="❌ Failed"
+          elif [ "$IS_DRY_RUN" = "true" ]; then
+            STATUS="🔍 Dry Run (Not Pushed)"
+          fi
+
+          {
+            echo "## 🍒 Cherry-pick Summary"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "| :--- | :--- |"
+            echo "| **Status** | $STATUS |"
+            echo "| **Target Branch** | \`$TARGET_BRANCH\` |"
+            echo "| **Source Commit** | \`$COMMIT_SHA\` |"
+            echo "| **Subject** | $COMMIT_TITLE |"
+            echo "| **Author** | $COMMIT_AUTHOR |"
+            echo "| **Date** | $COMMIT_DATE |"
+            echo "| **Dry Run** | \`$IS_DRY_RUN\` |"
+            echo "| **Auto Build Dispatched** | \`$IS_TRIGGER_BUILD\` |"
+            echo ""
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "### Changes Applied"
+              echo '```'
+              git show --stat --oneline HEAD
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
