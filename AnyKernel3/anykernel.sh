@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Kirisakura-Kernel (KernelSU Next Edition)
+kernel.string=Kirisakura-Kernel (Vanilla Edition)
 do.devicecheck=1
 do.modules=1
 do.systemless=1
@@ -26,7 +26,6 @@ supported.vendorpatchlevels=
 boot_attributes() {
 set_perm_recursive 0 0 755 644 $RAMDISK/*;
 set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
-set_perm 0 0 755 $RAMDISK/ksud;
 } # end attributes
 
 # boot shell variables
@@ -111,10 +110,6 @@ if [ -d /data/adb/modules/kirisakura_tuxera ] || [ -d /data/adb/modules_update/k
     ui_print "→ Removing old systemless Tuxera module...";
     rm -rf /data/adb/modules/kirisakura_tuxera
     rm -rf /data/adb/modules_update/kirisakura_tuxera
-    # For KernelSU-Next, we must make sure KSU detects the update
-    if [ -d /data/adb/ksu ]; then
-        touch /data/adb/ksu/update
-    fi
     ui_print "✓ Removed old module.";
     ui_print " ";
 fi

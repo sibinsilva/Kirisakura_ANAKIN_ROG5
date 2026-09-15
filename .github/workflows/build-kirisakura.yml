@@ -154,12 +154,12 @@ jobs:
           RELEASE_DATE=$(date -u +'%Y-%m-%d')
 
           # Determine artifact names & release tags
-          ZIP_NAME="Kirisakura-ROG5-KSU-Next-v3.3.0-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+          ZIP_NAME="Kirisakura-ROG5-Vanilla-${BUILD_DATE}-${SHORT_SHA}.zip"
           RELEASE_TAG="${{ inputs.release_tag }}"
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v3.3.0-susfs-${BUILD_DATE}-${SHORT_SHA}"
+            RELEASE_TAG="v4.1.3-vanilla-${BUILD_DATE}-${SHORT_SHA}"
           fi
-          RELEASE_NAME="Kirisakura ROG 5 — ${RELEASE_DATE} (${SHORT_SHA})"
+          RELEASE_NAME="Kirisakura ROG 5 (Vanilla) — ${RELEASE_DATE} (${SHORT_SHA})"
 
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
@@ -193,7 +193,7 @@ jobs:
 
           # Generate release notes markdown
           {
-            echo "## 🌸 Kirisakura Kernel for ASUS ROG Phone 5 (ZS673KS)"
+            echo "## 🌸 Kirisakura Kernel (Vanilla) for ASUS ROG Phone 5 (ZS673KS)"
             echo ""
             echo "### 📌 Build Details"
             echo "- **Branch:** \`$BRANCH_NAME\`"
@@ -205,7 +205,7 @@ jobs:
             echo ""
             echo "### 🛠 Toolchains & Features"
             echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
-            echo "- **KernelSU-Next:** v3.3.0 (\`33188\`) + Legacy SUSFS"
+            echo "- **Edition:** Pure Vanilla (Clean kernel baseline without root hooks)"
             echo "- **WireGuard:** \`1.0.20220627\`"
             echo ""
             echo "### 🔒 Checksum (SHA-256)"
