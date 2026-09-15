@@ -139,34 +139,106 @@ jobs:
           make $MAKE_ARGS kirisakura_defconfig
           make $MAKE_ARGS -j"$(nproc)"
 
-      - name: Package flashable zip
+      - name: Package flashable zip & Generate Release Notes
         run: |
           set -e
-          BUILD_DATE="$(date +%B%Y | tr '[:upper:]' '[:lower:]')"
-          ZIP_NAME="Kirisakura-ANAKIN-ROG5-KSU-Next-v3.3.0-legacy-susfs-${BUILD_DATE}.zip"
-          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
 
+          # Extract Git & Date metadata
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          FULL_SHA=$(git rev-parse HEAD)
+          COMMIT_SUBJECT=$(git log -1 --format='%s')
+          COMMIT_AUTHOR=$(git log -1 --format='%an')
+          BRANCH_NAME="${GITHUB_REF_NAME}"
+          BUILD_DATE=$(date -u +'%Y%m%d')
+          BUILD_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          RELEASE_DATE=$(date -u +'%Y-%m-%d')
+
+          # Determine artifact names & release tags
+          ZIP_NAME="Kirisakura-ROG5-KSU-Next-v3.3.0-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
           RELEASE_TAG="${{ inputs.release_tag }}"
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v3.3.0-legacy-susfs-${BUILD_DATE}"
+            RELEASE_TAG="v3.3.0-susfs-${BUILD_DATE}-${SHORT_SHA}"
           fi
+          RELEASE_NAME="Kirisakura ROG 5 — ${RELEASE_DATE} (${SHORT_SHA})"
+
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
+
+          # Verify build outputs exist before packaging
+          if [ ! -f "out_cfi/arch/arm64/boot/Image.gz" ]; then
+            echo "::error::Image.gz not found!"
+            exit 1
+          fi
+          if [ ! -f "out_cfi/drivers/input/misc/sx932x_2nd.ko" ]; then
+            echo "::error::sx932x_2nd.ko not found!"
+            exit 1
+          fi
+          if [ ! -f "out_cfi/drivers/input/touchscreen/ROG5_TP2/focaltech_fts_rog2.ko" ]; then
+            echo "::error::focaltech_fts_rog2.ko not found!"
+            exit 1
+          fi
 
           mkdir -p AnyKernel3/modules/vendor/lib/modules
-
           cp out_cfi/arch/arm64/boot/Image.gz AnyKernel3/Image.gz
-          cp out_cfi/drivers/input/misc/sx932x_2nd.ko \
-             AnyKernel3/modules/vendor/lib/modules/sx932x_2nd.ko
-          cp out_cfi/drivers/input/touchscreen/ROG5_TP2/focaltech_fts_rog2.ko \
-             AnyKernel3/modules/vendor/lib/modules/focaltech_fts_rog2.ko
+          cp out_cfi/drivers/input/misc/sx932x_2nd.ko AnyKernel3/modules/vendor/lib/modules/sx932x_2nd.ko
+          cp out_cfi/drivers/input/touchscreen/ROG5_TP2/focaltech_fts_rog2.ko AnyKernel3/modules/vendor/lib/modules/focaltech_fts_rog2.ko
 
           cd AnyKernel3
-          zip -r9 "../$ZIP_NAME" . \
-            -x "*.git*" "*README*" "*LICENSE*" "*patch*" \
-            > /dev/null
+          zip -r9 "../$ZIP_NAME" . -x "*.git*" "*README*" "*LICENSE*" "*patch*" > /dev/null
+          cd ..
+
+          ZIP_SHA256=$(sha256sum "$ZIP_NAME" | awk '{print $1}')
+          ZIP_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
+
+          # Generate release notes markdown
+          {
+            echo "## 🌸 Kirisakura Kernel for ASUS ROG Phone 5 (ZS673KS)"
+            echo ""
+            echo "### 📌 Build Details"
+            echo "- **Branch:** \`$BRANCH_NAME\`"
+            echo "- **Commit:** [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) — *$COMMIT_SUBJECT*"
+            echo "- **Author:** $COMMIT_AUTHOR"
+            echo "- **Build Time:** $BUILD_TIME"
+            echo "- **Kernel Version:** \`5.4.210-qgki-perf\`"
+            echo "- **Package Size:** $ZIP_SIZE"
+            echo ""
+            echo "### 🛠 Toolchains & Features"
+            echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
+            echo "- **KernelSU-Next:** v3.3.0 (\`33188\`) + Legacy SUSFS"
+            echo "- **WireGuard:** \`1.0.20220627\`"
+            echo ""
+            echo "### 🔒 Checksum (SHA-256)"
+            echo '```text'
+            echo "$ZIP_SHA256  $ZIP_NAME"
+            echo '```'
+          } > release_notes.md
+
+          # Output job step summary
+          {
+            echo "## 🌸 Kernel Build Summary"
+            echo ""
+            echo "| Item | Details |"
+            echo "| :--- | :--- |"
+            echo "| **Release Tag** | \`$RELEASE_TAG\` |"
+            echo "| **Branch** | \`$BRANCH_NAME\` |"
+            echo "| **Commit** | [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) — $COMMIT_SUBJECT |"
+            echo "| **Zip File** | \`$ZIP_NAME\` ($ZIP_SIZE) |"
+            echo "| **SHA256** | \`$ZIP_SHA256\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload flashable zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          body_path: release_notes.md
           files: ${{ env.ZIP_NAME }}
+
