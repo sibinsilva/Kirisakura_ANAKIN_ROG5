@@ -13,7 +13,7 @@
 - **Context:** Proposing already-merged patches creates noise and leads to duplicate/empty cherry-pick attempts.
 
 ## Always Use dev Branch for New Changes
-- **Rule:** When introducing new kernel changes, commits, config edits, or features, always switch to the `dev` branch to perform the development work. Do not make changes directly on master or release branches (e.g., `master_release_t2_ksu_next`). Verify and test changes on `dev` before merging/fast-forwarding them.
+- **Rule:** When introducing new kernel changes, commits, config edits, or features, always switch to the `dev` branch to perform the development work. Do not make changes directly on master or release branches (e.g., `release/ksu-next`). Verify and test changes on `dev` before merging/fast-forwarding them.
 - **Context:** Isolating development to the `dev` branch keeps production/release branches stable, prevents accidental commits on release branches, and allows for safe staging and verification of updates.
 
 ## Packaging and Uploading Kernel Builds

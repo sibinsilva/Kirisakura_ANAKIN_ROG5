@@ -8,9 +8,10 @@ on:
         required: true
         type: choice
         options:
-          - master_release_t2_ksu_next
-          - dev-sukisu-ultra
-          - lineage-20.0
+          - release/ksu-next
+          - release/sukisu-ultra
+          - release/lineage-20
+          - release/derpfest-13
       commit_sha:
         description: "Commit SHA from dev (full or short 7+ hex)"
         required: true
