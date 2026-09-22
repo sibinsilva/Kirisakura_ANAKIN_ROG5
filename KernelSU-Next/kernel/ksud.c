@@ -8,6 +8,7 @@
 #include <linux/err.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/fcntl.h>
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 #include <linux/input-event-codes.h>
@@ -529,13 +530,10 @@ bool ksu_is_safe_mode()
 
 #ifdef KSU_KPROBES_HOOK
 
-static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
+static int ksu_execve_syscall_common(struct pt_regs *real_regs,
+				     const char __user **filename_user,
+				     const char __user *const __user *__argv)
 {
-	struct pt_regs *real_regs = PT_REAL_REGS(regs);
-	const char __user **filename_user =
-		(const char **)&PT_REGS_PARM1(real_regs);
-	const char __user *const __user *__argv =
-		(const char __user *const __user *)PT_REGS_PARM2(real_regs);
 	struct user_arg_ptr argv = { .ptr.native = __argv };
 	struct filename filename_in, *filename_p;
 	char path[32];
@@ -551,9 +549,12 @@ static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
 
 	memset(path, 0, sizeof(path));
 	ret = strncpy_from_user_nofault(path, fn, 32);
-	if (ret < 0 && try_set_access_flag(addr)) {
-		ret = strncpy_from_user_nofault(path, fn, 32);
+	if (ret < 0 && preempt_count()) {
+		preempt_enable_no_resched_notrace();
+		ret = strncpy_from_user(path, fn, 32);
+		preempt_disable_notrace();
 	}
+
 	if (ret < 0) {
 		pr_err("Access filename failed for execve_handler_pre\n");
 		return 0;
@@ -561,7 +562,28 @@ static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
 	filename_in.name = path;
 
 	filename_p = &filename_in;
-	return ksu_handle_execveat_ksud(AT_FDCWD, &filename_p, &argv, NULL, NULL);
+	return ksu_handle_execveat_ksud(AT_FDCWD, &filename_p, &argv, NULL,
+					NULL);
+}
+
+static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct pt_regs *real_regs = PT_REAL_REGS(regs);
+	return ksu_execve_syscall_common(real_regs,
+					 (const char __user **)&PT_REGS_PARM1(real_regs),
+					 (const char __user *const __user *)PT_REGS_PARM2(real_regs));
+}
+
+static int sys_execveat_handler_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct pt_regs *real_regs = PT_REAL_REGS(regs);
+	// New bionic maps execve to execveat(AT_FDCWD, path, argv, envp, 0)
+	if ((int)PT_REGS_PARM1(real_regs) != AT_FDCWD ||
+	    (int)PT_REGS_SYSCALL_PARM4(real_regs) != 0)
+		return 0;
+	return ksu_execve_syscall_common(real_regs,
+					 (const char __user **)&PT_REGS_PARM2(real_regs),
+					 (const char __user *const __user *)PT_REGS_PARM3(real_regs));
 }
 
 static int sys_read_handler_pre(struct kprobe *p, struct pt_regs *regs)
@@ -631,6 +653,10 @@ static struct kprobe execve_kp = {
 	.symbol_name = SYS_EXECVE_SYMBOL,
 	.pre_handler = sys_execve_handler_pre,
 };
+static struct kprobe execveat_kp = {
+	.symbol_name = SYS_EXECVEAT_SYMBOL,
+	.pre_handler = sys_execveat_handler_pre,
+};
 static struct kprobe sys_read_kp = {
 	.symbol_name = SYS_READ_SYMBOL,
 	.pre_handler = sys_read_handler_pre,
@@ -656,6 +682,7 @@ static void do_stop_init_rc_hook(struct work_struct *work)
 
 static void do_stop_execve_hook(struct work_struct *work)
 {
+	unregister_kprobe(&execveat_kp);
 	unregister_kprobe(&execve_kp);
 }
 
@@ -770,13 +797,19 @@ static void stop_input_hook()
 
 
 // ksud: module support
-void ksu_ksud_init()
+void __init ksu_ksud_init(void)
 {
 #ifdef KSU_KPROBES_HOOK
 	int ret;
 
 	ret = register_kprobe(&execve_kp);
 	pr_info("ksud: execve_kp: %d\n", ret);
+
+	ret = register_kprobe(&execveat_kp);
+	if (ret)
+		pr_info("ksud: execveat_kp not available: %d\n", ret);
+	else
+		pr_info("ksud: execveat_kp: %d\n", ret);
 
 	ret = register_kprobe(&sys_read_kp);
 	pr_info("ksud: sys_read_kp: %d\n", ret);
@@ -793,9 +826,10 @@ void ksu_ksud_init()
 #endif
 }
 
-void ksu_ksud_exit()
+void __exit ksu_ksud_exit(void)
 {
 #ifdef KSU_KPROBES_HOOK
+	unregister_kprobe(&execveat_kp);
 	unregister_kprobe(&execve_kp);
 	// this should be done before unregister sys_read_kp
 	// unregister_kprobe(&sys_read_kp);

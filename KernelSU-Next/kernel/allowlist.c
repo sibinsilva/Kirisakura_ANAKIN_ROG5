@@ -22,7 +22,10 @@
 #include <linux/compiler_types.h>
 #endif
 
+#include <linux/workqueue.h>
+
 #include "klog.h" // IWYU pragma: keep
+#include "ksu.h"
 #include "ksud.h"
 #include "selinux/selinux.h"
 #include "allowlist.h"
@@ -31,7 +34,7 @@
 #include "kernel_compat.h"
 
 #define FILE_MAGIC 0x7f4b5355 // ' KSU', u32
-#define FILE_FORMAT_VERSION 3 // u32
+#define FILE_FORMAT_VERSION 4 // u32
 
 #define KSU_APP_PROFILE_PRESERVE_UID 9999 // NOBODY_UID
 #define KSU_DEFAULT_SELINUX_DOMAIN "u:r:" KERNEL_SU_DOMAIN ":s0"
@@ -74,6 +77,7 @@ static void init_default_profiles()
     memcpy(&default_root_profile.capabilities.effective, &full_cap,
            sizeof(default_root_profile.capabilities.effective));
     default_root_profile.namespaces = KSU_NS_INHERITED;
+    default_root_profile.flags = 0;
     strcpy(default_root_profile.selinux_domain, KSU_DEFAULT_SELINUX_DOMAIN);
 
 	// This means that we will umount modules by default!
@@ -276,6 +280,34 @@ out_unlock:
     return result;
 }
 
+static void migrate_profile(u32 version, struct app_profile *profile)
+{
+    char *domain;
+    static const size_t domain_len = sizeof(profile->rp_config.profile.selinux_domain);
+
+    switch (version) {
+    case 2:
+        if (profile->allow_su) {
+            domain = profile->rp_config.profile.selinux_domain;
+            if (strncmp(domain, "u:r:su:s0", domain_len) == 0) {
+                strscpy(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len);
+                size_t len = strlen(KSU_DEFAULT_SELINUX_DOMAIN);
+                if (len < domain_len)
+                    memset(domain + len, 0, domain_len - len);
+                pr_info("migrated domain of profile: %s\n", profile->key);
+            }
+        }
+        // fallthrough
+    case 3:
+        if (profile->allow_su) {
+            profile->rp_config.profile.flags = FLAG_KSU_NO_NEW_PRIVS;
+        }
+        break;
+    }
+
+    profile->version = KSU_APP_PROFILE_VER;
+}
+
 bool __ksu_is_allow_uid(uid_t uid)
 {
 	int i;
@@ -319,6 +351,10 @@ bool ksu_uid_should_umount(uid_t uid)
 	if (likely(ksu_is_manager_appid_valid()) &&
 		unlikely(ksu_get_manager_appid() == uid % PER_USER_RANGE)) {
 		// we should not umount on manager!
+		return false;
+	}
+	if (unlikely(uid == WEBVIEW_ZYGOTE_UID)) {
+		// we should not umount for webview zygote
 		return false;
 	}
 	bool found = ksu_get_app_profile(&profile);
@@ -392,16 +428,18 @@ bool ksu_get_allow_list(int *array, u16 length, u16 *out_length, u16 *out_total,
 	return true;
 }
 
-// TODO: move to kernel thread or work queue
-static void do_persistent_allow_list(struct callback_head *_cb)
+static struct work_struct ksu_save_allow_list_work;
+
+static void do_persistent_allow_list(struct work_struct *work)
 {
     u32 magic = FILE_MAGIC;
     u32 version = FILE_FORMAT_VERSION;
     struct perm_data *p = NULL;
     loff_t off = 0;
 
+    const struct cred *saved = override_creds(ksu_cred);
     struct file *fp =
-        filp_open(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        ksu_filp_open_compat(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (IS_ERR(fp)) {
         pr_err("save_allow_list create file failed: %ld\n", PTR_ERR(fp));
         goto out;
@@ -430,33 +468,12 @@ static void do_persistent_allow_list(struct callback_head *_cb)
 close_file:
     filp_close(fp, 0);
 out:
-    kfree(_cb);
+    revert_creds(saved);
 }
 
-void ksu_persistent_allow_list()
+void ksu_persistent_allow_list(void)
 {
-	struct task_struct *tsk;
-
-	tsk = get_pid_task(find_vpid(1), PIDTYPE_PID);
-	if (!tsk) {
-		pr_err("save_allow_list find init task err\n");
-		return;
-	}
-
-	struct callback_head *cb =
-		kzalloc(sizeof(struct callback_head), GFP_KERNEL);
-	if (!cb) {
-		pr_err("save_allow_list alloc cb err\b");
-		goto put_task;
-	}
-	cb->func = do_persistent_allow_list;
-	if (task_work_add(tsk, cb, TWA_RESUME)) {
-		kfree(cb);
-		pr_warn("save_allow_list add task_work failed\n");
-	}
-
-put_task:
-	put_task_struct(tsk);
+    schedule_work(&ksu_save_allow_list_work);
 }
 
 void ksu_load_allow_list()
@@ -466,6 +483,7 @@ void ksu_load_allow_list()
 	struct file *fp = NULL;
 	u32 magic;
 	u32 version;
+	size_t app_profile_size;
 
 #ifdef CONFIG_KSU_DEBUG
 	// always allow adb shell by default
@@ -491,22 +509,39 @@ void ksu_load_allow_list()
 		goto exit;
 	}
 
+	if (version < 2 || version > KSU_APP_PROFILE_VER) {
+		pr_err("invalid allowlist version: %d\n", version);
+		goto exit;
+	}
+
 	pr_info("allowlist version: %d\n", version);
+
+	static const size_t kAppProfileSizePreV4 = 776;
+	app_profile_size = version < KSU_APP_PROFILE_VER ? kAppProfileSizePreV4 : sizeof(struct app_profile);
 
 	while (true) {
 		struct app_profile profile;
 
-		ret = ksu_kernel_read_compat(fp, &profile, sizeof(profile), &off);
+		ret = ksu_kernel_read_compat(fp, &profile, app_profile_size, &off);
 
-		if (ret <= 0) {
-			pr_info("load_allow_list read err: %zd\n", ret);
+		if (ret != app_profile_size) {
+			if (ret != 0)
+				pr_info("load_allow_list read err: %zd\n", ret);
 			break;
 		}
 
-        pr_info("load_allow_uid, name: %s, uid: %d, allow: %d\n", profile.key,
+		migrate_profile(version, &profile);
+
+		pr_info("load_allow_uid, name: %s, uid: %d, allow: %d\n", profile.key,
                 profile.current_uid, profile.allow_su);
-        ksu_set_app_profile(&profile);
-    }
+		ksu_set_app_profile(&profile);
+	}
+
+	ksu_show_allow_list();
+	filp_close(fp, 0);
+	if (version < KSU_APP_PROFILE_VER)
+		ksu_persistent_allow_list();
+	return;
 
 exit:
 	ksu_show_allow_list();
@@ -563,13 +598,17 @@ void ksu_allowlist_init(void)
 
 	INIT_LIST_HEAD(&allow_list);
 
+	INIT_WORK(&ksu_save_allow_list_work, do_persistent_allow_list);
+
 	init_default_profiles();
 }
 
-void ksu_allowlist_exit(void)
+void __exit ksu_allowlist_exit(void)
 {
 	struct perm_data *np = NULL;
 	struct perm_data *n = NULL;
+
+	cancel_work_sync(&ksu_save_allow_list_work);
 
 	// free allowlist
 	mutex_lock(&allowlist_mutex);

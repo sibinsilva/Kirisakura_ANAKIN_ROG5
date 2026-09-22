@@ -127,6 +127,13 @@ void apply_kernelsu_rules()
     ksu_allow(db, "kernel", ALL, "file", "read");
     ksu_allow(db, "kernel", ALL, "file", "write");
 
+    // use memfd created by su domain
+    ksu_allow(db, "domain", KERNEL_SU_DOMAIN, "memfd_file", "execute");
+    ksu_allow(db, "domain", KERNEL_SU_DOMAIN, "memfd_file", "getattr");
+    ksu_allow(db, "domain", KERNEL_SU_DOMAIN, "memfd_file", "map");
+    ksu_allow(db, "domain", KERNEL_SU_DOMAIN, "memfd_file", "read");
+    ksu_allow(db, "domain", KERNEL_SU_DOMAIN, "memfd_file", "write");
+
     // Allow all binder transactions
     ksu_allow(db, ALL, KERNEL_SU_DOMAIN, "binder", ALL);
 
