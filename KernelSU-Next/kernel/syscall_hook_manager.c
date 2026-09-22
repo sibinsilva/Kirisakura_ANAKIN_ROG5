@@ -234,8 +234,14 @@ static inline bool check_syscall_fastpath(int nr)
 {
 	switch (nr) {
 	case __NR_newfstatat:
+#ifdef __NR_fstatat64
+	case __NR_fstatat64:
+#endif
 	case __NR_faccessat:
 	case __NR_execve:
+#ifdef __NR_execveat
+	case __NR_execveat:
+#endif
 	case __NR_setresuid:
 		return true;
 	default:
@@ -259,15 +265,21 @@ int ksu_handle_init_mark_tracker(const char __user **filename_user)
 
 	memset(path, 0, sizeof(path));
 	ret = strncpy_from_user_nofault(path, fn, sizeof(path));
-	if (ret < 0 && try_set_access_flag(addr)) {
-		ret = strncpy_from_user_nofault(path, fn, sizeof(path));
-		pr_info("ksu_handle_init_mark_tracker: %ld\n", ret);
+	if (ret < 0 && preempt_count()) {
+		preempt_enable_no_resched_notrace();
+		ret = strncpy_from_user(path, fn, sizeof(path));
+		preempt_disable_notrace();
+	}
+
+	if (ret < 0) {
+		return 0;
 	}
 
 	if (unlikely(strcmp(path, KSUD_PATH) == 0)) {
 		pr_info("hook_manager: escape to root for init executing ksud: %d\n", current->pid);
 		escape_to_root_for_init();
-	} else if (likely(strstr(path, "/app_process") == NULL && strstr(path, "/adbd") == NULL)) {
+	} else if (likely(strstr(path, "/app_process") == NULL && strstr(path, "/adbd") == NULL &&
+			  strstr(path, "/stub_zygote") == NULL)) {
 		pr_info("hook_manager: unmark %d exec %s\n", current->pid, path);
 		ksu_clear_task_tracepoint_flag_if_needed(current);
 	}
@@ -282,7 +294,11 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 	if (unlikely(check_syscall_fastpath(id))) {
 		if (ksu_su_compat_enabled) {
 			// Handle newfstatat
+#ifdef __NR_fstatat64
+			if (id == __NR_newfstatat || id == __NR_fstatat64) {
+#else
 			if (id == __NR_newfstatat) {
+#endif
 				int *dfd = (int *)&PT_REGS_PARM1(regs);
 				const char __user **filename_user =
 					(const char __user **)&PT_REGS_PARM2(regs);
@@ -301,14 +317,27 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 				return;
 			}
 
-			// Handle execve
+			// Handle execve/execveat
+#ifdef __NR_execveat
+			if (id == __NR_execve || id == __NR_execveat) {
+#else
 			if (id == __NR_execve) {
+#endif
+#ifdef __NR_execveat
+				bool is_execveat = (id == __NR_execveat);
+#else
+				bool is_execveat = false;
+#endif
 				const char __user **filename_user =
-					(const char __user **)&PT_REGS_PARM1(regs);
-				if (current->pid != 1 && is_init(get_current_cred())) {
+					is_execveat ?
+						(const char __user **)&PT_REGS_PARM2(regs) :
+						(const char __user **)&PT_REGS_PARM1(regs);
+				if (current->pid != 1 && is_init(current_cred())) {
 					ksu_handle_init_mark_tracker(filename_user);
+				} else if (is_execveat) {
+					ksu_handle_execveat_sucompat_user(filename_user, 0, regs);
 				} else {
-					ksu_handle_execve_sucompat(filename_user, NULL, NULL, NULL);
+					ksu_handle_execve_sucompat(filename_user, 0, regs);
 				}
 				return;
 			}
@@ -326,7 +355,7 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 }
 #endif
 
-void ksu_syscall_hook_manager_init(void)
+void __init ksu_syscall_hook_manager_init(void)
 {
 	int ret;
 	pr_info("hook_manager: ksu_hook_manager_init called\n");
@@ -339,7 +368,13 @@ void ksu_syscall_hook_manager_init(void)
 #endif
 
 #ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+	// Register with minimum priority so perf/bpf handlers run before
+	// we modify the syscall context
+	ret = register_trace_prio_sys_enter(ksu_sys_enter_handler, NULL, INT_MIN);
+#else
 	ret = register_trace_sys_enter(ksu_sys_enter_handler, NULL);
+#endif
 #ifndef CONFIG_KRETPROBES
 	ksu_mark_running_process_locked();
 #endif
@@ -355,7 +390,7 @@ void ksu_syscall_hook_manager_init(void)
 	ksu_avc_spoof_init();
 }
 
-void ksu_syscall_hook_manager_exit(void)
+void __exit ksu_syscall_hook_manager_exit(void)
 {
 	pr_info("hook_manager: ksu_hook_manager_exit called\n");
 #ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS

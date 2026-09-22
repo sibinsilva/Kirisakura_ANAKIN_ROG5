@@ -72,9 +72,7 @@ static int do_grant_root(void __user *arg)
     write_sulog('i'); // log ioctl escalation
 
     pr_info("allow root for: %d\n", current_uid().val);
-    escape_with_root_profile();
-
-	return 0;
+    return escape_with_root_profile();
 }
 
 static uint32_t ksuver_override = 0;
@@ -783,6 +781,12 @@ static int add_try_umount(void __user *arg)
     return 0;
 }
 
+static int do_disable_escape_to_root(void __user *arg)
+{
+    set_thread_flag(TIF_KSU_DISABLE_ESCAPE_WITH_ROOT);
+    return 0;
+}
+
 // IOCTL handlers mapping table
 static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
     { .cmd = KSU_IOCTL_GRANT_ROOT,
@@ -869,6 +873,10 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
       .name = "ADD_TRY_UMOUNT",
       .handler = add_try_umount,
       .perm_check = manager_or_root },
+    { .cmd = KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT,
+      .name = "DISABLE_ESCAPE_TO_ROOT",
+      .handler = do_disable_escape_to_root,
+      .perm_check = only_root },
 	{ .cmd = KSU_IOCTL_GET_HOOK_MODE,
 	  .name = "GET_HOOK_MODE",
 	  .handler = do_get_hook_mode,

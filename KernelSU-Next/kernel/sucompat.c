@@ -20,9 +20,11 @@
 #include <linux/sched.h>
 #endif
 #include <linux/ptrace.h>
+#include <linux/fcntl.h>
 
 #include "objsec.h"
 
+#include "arch.h"
 #include "allowlist.h"
 #include "feature.h"
 #include "klog.h" // IWYU pragma: keep
@@ -62,9 +64,13 @@ static const struct ksu_feature_handler su_compat_handler = {
 
 static void __user *userspace_stack_buffer(const void *d, size_t len)
 {
-	// To avoid having to mmap a page in userspace, just write below the stack
-	// pointer.
-	char __user *p = (void __user *)current_user_stack_pointer() - len;
+	// Stack Pointer must be 16-byte aligned.
+	// We also subtract a safe margin (256 bytes) 
+	// to avoid corrupting local variables or smth
+	unsigned long sp = current_user_stack_pointer();
+	sp = (sp - len - 256) & ~0xFUL; // Align downwards to nearest 16 bytes
+
+	char __user *p = (char __user *)sp;
 
 	return copy_to_user(p, d, len) ? NULL : p;
 }
@@ -88,6 +94,10 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
 {
 	const char su[] = SU_PATH;
 
+	if (!ksu_su_compat_enabled) {
+		return 0;
+	}
+
 	if (!ksu_is_allow_uid_for_current(current_uid().val)) {
 		return 0;
 	}
@@ -96,19 +106,22 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
 	memset(path, 0, sizeof(path));
 	strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
-    if (unlikely(!memcmp(path, su, sizeof(su)))) {
-        write_sulog('a');
-        pr_info("faccessat su->sh!\n");
-        *filename_user = sh_user_path();
-    }
+	if (unlikely(!memcmp(path, su, sizeof(su)))) {
+		write_sulog('a');
+		pr_info("faccessat su->sh!\n");
+		*filename_user = sh_user_path();
+	}
 
 	return 0;
 }
 
 int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 {
-	// const char sh[] = SH_PATH;
 	const char su[] = SU_PATH;
+
+	if (!ksu_su_compat_enabled) {
+		return 0;
+	}
 
 	if (!ksu_is_allow_uid_for_current(current_uid().val)) {
 		return 0;
@@ -122,18 +135,18 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 	memset(path, 0, sizeof(path));
 	strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
-    if (unlikely(!memcmp(path, su, sizeof(su)))) {
-        write_sulog('s');
-        pr_info("newfstatat su->sh!\n");
-        *filename_user = sh_user_path();
-    }
+	if (unlikely(!memcmp(path, su, sizeof(su)))) {
+		write_sulog('s');
+		pr_info("newfstatat su->sh!\n");
+		*filename_user = sh_user_path();
+	}
 
 	return 0;
 }
 
-int ksu_handle_execve_sucompat(const char __user **filename_user,
-				void *__never_use_argv, void *__never_use_envp,
-				int *__never_use_flags)
+static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
+		const char __user *const __user *argv_user, bool execveat,
+		const struct pt_regs *regs)
 {
 	const char su[] = SU_PATH;
 	const char __user *fn;
@@ -141,46 +154,75 @@ int ksu_handle_execve_sucompat(const char __user **filename_user,
 	long ret;
 	unsigned long addr;
 
+	if (execveat && ((int)PT_REGS_PARM1(regs) != AT_FDCWD ||
+			 (int)PT_REGS_SYSCALL_PARM4(regs) != 0))
+		goto do_orig_execve;
+
 	if (unlikely(!filename_user))
-		return 0;
+		goto do_orig_execve;
+
+	if (!ksu_su_compat_enabled)
+		goto do_orig_execve;
 
 	if (!ksu_is_allow_uid_for_current(current_uid().val))
-		return 0;
+		goto do_orig_execve;
 
 	addr = untagged_addr((unsigned long)*filename_user);
 	fn = (const char __user *)addr;
 	memset(path, 0, sizeof(path));
 	ret = strncpy_from_user_nofault(path, fn, sizeof(path));
 
-	if (ret < 0 && try_set_access_flag(addr)) {
-		ret = strncpy_from_user_nofault(path, fn, sizeof(path));
-	}
-
 	if (ret < 0 && preempt_count()) {
-		/* This is crazy, but we know what we are doing:
-			* Temporarily exit atomic context to handle page faults, then restore it */
-		pr_info("Access filename failed, try rescue..\n");
 		preempt_enable_no_resched_notrace();
 		ret = strncpy_from_user(path, fn, sizeof(path));
 		preempt_disable_notrace();
 	}
 
 	if (ret < 0) {
-		pr_warn("Access filename when execve failed: %ld", ret);
-		return 0;
+		goto do_orig_execve;
 	}
 
 	if (likely(memcmp(path, su, sizeof(su))))
-		return 0;
+		goto do_orig_execve;
 
-    write_sulog('x');
+	write_sulog('x');
 
-    pr_info("sys_execve su found\n");
-    *filename_user = ksud_user_path();
+	pr_info("sys_execve su found\n");
+	*filename_user = ksud_user_path();
 
-	escape_with_root_profile();
-
+	ret = escape_with_root_profile();
+	if (ret) {
+		pr_err("escape_with_root_profile failed: %ld\n", ret);
+		goto do_orig_execve;
+	}
+	if (preempt_count() > 0) {
+		*filename_user = ksud_user_path();
+	} else {
+		struct file *f = ksu_filp_open_compat(KSUD_PATH, O_RDONLY, 0);
+		if (IS_ERR(f)) {
+			pr_warn("ksud inaccessible, applying fallback to sh\n");
+			*filename_user = sh_user_path();
+		} else {
+			filp_close(f, NULL);
+			*filename_user = ksud_user_path();
+		}
+	}
+do_orig_execve:
 	return 0;
+}
+
+long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
+{
+	return ksu_handle_execve_sucompat_common(filename_user,
+			(const char __user *const __user *)PT_REGS_PARM2(regs),
+			false, regs);
+}
+
+long ksu_handle_execveat_sucompat_user(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
+{
+	return ksu_handle_execve_sucompat_common(filename_user,
+			(const char __user *const __user *)PT_REGS_PARM3(regs),
+			true, regs);
 }
 
 int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
@@ -192,6 +234,9 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 	static const char ksud_path[] = KSUD_PATH;
 
 	if (unlikely(!filename_ptr))
+		return 0;
+
+	if (!ksu_su_compat_enabled)
 		return 0;
 
 	if (!ksu_is_allow_uid_for_current(current_uid().val))
@@ -246,14 +291,14 @@ int __maybe_unused ksu_handle_devpts(struct inode *inode)
 }
 
 // sucompat: permitted process can execute 'su' to gain root access.
-void ksu_sucompat_init()
+void __init ksu_sucompat_init()
 {
 	if (ksu_register_feature_handler(&su_compat_handler)) {
 		pr_err("Failed to register su_compat feature handler\n");
 	}
 }
 
-void ksu_sucompat_exit()
+void __exit ksu_sucompat_exit()
 {
 	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
 }
