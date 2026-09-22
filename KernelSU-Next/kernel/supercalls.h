@@ -5,7 +5,10 @@
 #include <linux/ioctl.h>
 #include "app_profile.h"
 
-#define KERNEL_SU_UAPI_VERSION 2
+// 2: allowlist v4 root profile flags
+// 3: scoped su-session driver fd
+// 4: add KSU_GET_INFO_FLAG_BUNDLED
+#define KERNEL_SU_UAPI_VERSION 4
 
 // Magic numbers for reboot hook to install fd
 #define KSU_INSTALL_MAGIC1 0xDEADBEEF
