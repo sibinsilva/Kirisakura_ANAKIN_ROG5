@@ -153,14 +153,37 @@ jobs:
           BUILD_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
           RELEASE_DATE=$(date -u +'%Y-%m-%d')
 
-          # Determine artifact names & release tags
-          ZIP_NAME="Kirisakura-ROG5-KSU-Next-v3.3.0-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+          # Determine root flavor
+          if [ -d "KernelSU-Next" ]; then
+            FLAVOR_TAG="KSU-Next"
+            KSU_DESC="KernelSU-Next: v3.4.0 (\`33294\`) + Legacy SUSFS"
+          elif [ -d "KernelSU" ]; then
+            FLAVOR_TAG="SuKiSU-Ultra"
+            KSU_DESC="SukiSU-Ultra: v4.1.3 + Legacy SUSFS"
+          else
+            FLAVOR_TAG="Stock"
+            KSU_DESC="Stock (no root)"
+          fi
+
+          # Determine release vs pre-release based on branch
+          if [[ "$BRANCH_NAME" == release/* ]]; then
+            IS_PRERELEASE="false"
+            DEFAULT_TAG="v3.4.0-susfs-${BUILD_DATE}-${SHORT_SHA}"
+            RELEASE_NAME="Kirisakura ROG 5 (${FLAVOR_TAG}) — ${RELEASE_DATE} (${SHORT_SHA})"
+            ZIP_NAME="Kirisakura-ROG5-${FLAVOR_TAG}-v3.4.0-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+          else
+            IS_PRERELEASE="true"
+            DEFAULT_TAG="v3.4.0-susfs-pre-${BUILD_DATE}-${SHORT_SHA}"
+            RELEASE_NAME="Kirisakura ROG 5 (${FLAVOR_TAG}) Pre-Release — ${RELEASE_DATE} (${SHORT_SHA})"
+            ZIP_NAME="Kirisakura-ROG5-${FLAVOR_TAG}-v3.4.0-susfs-pre-${BUILD_DATE}-${SHORT_SHA}.zip"
+          fi
+
           RELEASE_TAG="${{ inputs.release_tag }}"
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v3.3.0-susfs-${BUILD_DATE}-${SHORT_SHA}"
+            RELEASE_TAG="$DEFAULT_TAG"
           fi
-          RELEASE_NAME="Kirisakura ROG 5 (KSU-Next) — ${RELEASE_DATE} (${SHORT_SHA})"
 
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> "$GITHUB_ENV"
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
@@ -193,8 +216,12 @@ jobs:
 
           # Generate release notes markdown
           {
-            echo "## 🌸 Kirisakura Kernel (KSU-Next) for ASUS ROG Phone 5 (ZS673KS)"
+            echo "## Kirisakura Kernel ($FLAVOR_TAG) for ASUS ROG Phone 5 (ZS673KS)"
             echo ""
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              echo "> ⚠️ **Pre-Release Build:** Built from development branch \`$BRANCH_NAME\` for testing."
+              echo ""
+            fi
             echo "### 📌 Build Details"
             echo "- **Branch:** \`$BRANCH_NAME\`"
             echo "- **Commit:** [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) — *$COMMIT_SUBJECT*"
@@ -205,7 +232,7 @@ jobs:
             echo ""
             echo "### 🛠 Toolchains & Features"
             echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
-            echo "- **KernelSU-Next:** v3.3.0 (\`33188\`) + Legacy SUSFS"
+            echo "- **$KSU_DESC**"
             echo "- **WireGuard:** \`1.0.20220627\`"
             echo ""
             echo "### 🔒 Checksum (SHA-256)"
@@ -216,11 +243,13 @@ jobs:
 
           # Output job step summary
           {
-            echo "## 🌸 Kernel Build Summary"
+            echo "## Kernel Build Summary"
             echo ""
             echo "| Item | Details |"
             echo "| :--- | :--- |"
+            echo "| **Release Title** | $RELEASE_NAME |"
             echo "| **Release Tag** | \`$RELEASE_TAG\` |"
+            echo "| **Pre-Release** | \`$IS_PRERELEASE\` |"
             echo "| **Branch** | \`$BRANCH_NAME\` |"
             echo "| **Commit** | [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) — $COMMIT_SUBJECT |"
             echo "| **Zip File** | \`$ZIP_NAME\` ($ZIP_SIZE) |"
@@ -239,5 +268,7 @@ jobs:
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body_path: release_notes.md
           files: ${{ env.ZIP_NAME }}
+
