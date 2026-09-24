@@ -38,6 +38,9 @@ jobs:
           - branch: release/sukisu-ultra
             flavor: SuKiSU-Ultra
             desc: "SukiSU-Ultra v4.1.3 + Legacy SUSFS"
+          - branch: release/resukisu
+            flavor: ReSukiSU
+            desc: "ReSukiSU v4.2.0-rc3 + Legacy SUSFS"
     steps:
       - name: Checkout ${{ matrix.branch }}
         uses: actions/checkout@v4
@@ -46,23 +49,29 @@ jobs:
           fetch-depth: 1
           submodules: true
 
-      - name: Patch KernelSU (SukiSU-Ultra) submodule for pre-5.10 kernels
-        if: hashFiles('KernelSU/kernel/runtime/ksud.c') != ''
+      - name: Patch KernelSU submodules for pre-5.10 kernels
         run: |
           set -e
-          KSUD="KernelSU/kernel/runtime/ksud.c"
-          sed -i \
-            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
-            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/a\#endif' \
-            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
-            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/a\#endif' \
-            "$KSUD"
-          grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' "$KSUD"
+          # SukiSU-Ultra ksud.c fix
+          if [ -f "KernelSU/kernel/runtime/ksud.c" ]; then
+            KSUD="KernelSU/kernel/runtime/ksud.c"
+            sed -i \
+              -e '/^    ksu_selinux_hide_handle_post_fs_data();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
+              -e '/^    ksu_selinux_hide_handle_post_fs_data();$/a\#endif' \
+              -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
+              -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/a\#endif' \
+              "$KSUD" || true
+          fi
 
-          sed -i \
-            's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' \
-            KernelSU/kernel/sulog/event.c
-          grep -c 'ksu_strncpy_from_user_nofault' KernelSU/kernel/sulog/event.c
+          # SukiSU-Ultra sulog event.c fix
+          if [ -f "KernelSU/kernel/sulog/event.c" ]; then
+            sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' KernelSU/kernel/sulog/event.c || true
+          fi
+
+          # ReSukiSU sucompat.c fix
+          if [ -f "KernelSU/kernel/feature/sucompat.c" ]; then
+            sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' KernelSU/kernel/feature/sucompat.c || true
+          fi
 
       - name: Install build dependencies
         run: |
