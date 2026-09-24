@@ -37,7 +37,7 @@ jobs:
             desc: "KernelSU-Next v3.4.0 (33294) + Legacy SUSFS"
           - branch: release/sukisu-ultra
             flavor: SuKiSU-Ultra
-            desc: "SukiSU-Ultra v4.1.3 + Legacy SUSFS"
+            desc: "SukiSU-Ultra v4.2.0 + Legacy SUSFS"
           - branch: release/resukisu
             flavor: ReSukiSU
             desc: "ReSukiSU v4.2.0-rc3 + Legacy SUSFS"
@@ -52,7 +52,7 @@ jobs:
       - name: Patch KernelSU submodules for pre-5.10 kernels
         run: |
           set -e
-          # SukiSU-Ultra ksud.c fix
+          # SukiSU-Ultra ksud.c fix (legacy)
           if [ -f "KernelSU/kernel/runtime/ksud.c" ]; then
             KSUD="KernelSU/kernel/runtime/ksud.c"
             sed -i \
@@ -63,14 +63,9 @@ jobs:
               "$KSUD" || true
           fi
 
-          # SukiSU-Ultra sulog event.c fix
-          if [ -f "KernelSU/kernel/sulog/event.c" ]; then
-            sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' KernelSU/kernel/sulog/event.c || true
-          fi
-
-          # ReSukiSU sucompat.c fix
-          if [ -f "KernelSU/kernel/feature/sucompat.c" ]; then
-            sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' KernelSU/kernel/feature/sucompat.c || true
+          # Compat patch for strncpy_from_user_nofault across all KernelSU submodule C sources
+          if [ -d "KernelSU/kernel" ]; then
+            find KernelSU/kernel -type f -name "*.c" -exec sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/g' {} + || true
           fi
 
       - name: Install build dependencies
@@ -276,14 +271,14 @@ jobs:
           echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
 
           {
-            echo "## Kirisakura Kernel for ASUS ROG Phone 5 (ZS673KS)"
-            echo "Unified Multi-Flavor Release — ${RELEASE_DATE}"
+            echo "## Kirisakura Kernel - ASUS ROG Phone 5 (ZS673KS)"
+            echo "Unified Multi-Flavor Release - ${RELEASE_DATE}"
             echo ""
             if [ "${{ inputs.is_prerelease }}" = "true" ]; then
-              echo "> ⚠️ **Pre-Release Build:** Contains experimental or preview changes."
+              echo "> **Pre-Release Build:** Contains experimental or preview changes."
               echo ""
             fi
-            echo "### 📦 Available Flavors & Downloads"
+            echo "### Flavors and Downloads"
             echo ""
             echo "| Flavor | Description | Package Name | Size | SHA-256 Checksum |"
             echo "| :--- | :--- | :--- | :--- | :--- |"
@@ -294,20 +289,20 @@ jobs:
               echo "| **$FLAVOR** | $DESC | \`$ZIP_NAME\` | $ZIP_SIZE | \`$ZIP_SHA256\` |"
             done
             echo ""
-            echo "### 📌 Branch & Commit Details"
+            echo "### Branch and Commit Details"
             for info in artifacts/*.info; do
               source "$info"
-              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) — *$COMMIT_SUBJECT*"
+              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - *$COMMIT_SUBJECT*"
             done
             echo ""
-            echo "### 🛠 Kernel Details & Toolchains"
+            echo "### Kernel Details and Toolchains"
             echo "- **Kernel Version:** \`5.4.210-qgki-perf\` (KMI locked, Qualcomm Symbol CRC compatible)"
             echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
             echo "- **WireGuard:** \`1.0.20220627\`"
-            echo "- **Crash Logging:** Native 256 KB persistent dmesg buffer via \`/proc/last_kmsg\` (zero battery overhead)"
+            echo "- **Crash Logging:** Native 256 KB persistent dmesg buffer via \`/proc/last_kmsg\`"
             echo "- **Build Time:** $BUILD_TIME"
             echo ""
-            echo "### 🔒 Full Checksums (SHA-256)"
+            echo "### Full Checksums (SHA-256)"
             echo '```text'
             for info in artifacts/*.info; do
               source "$info"
