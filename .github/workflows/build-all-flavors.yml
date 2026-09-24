@@ -278,29 +278,11 @@ jobs:
               echo "> **Pre-Release Build:** Contains experimental or preview changes."
               echo ""
             fi
-            echo "### Flavors and Downloads"
-            echo ""
-            echo "| Flavor | Description | Package Name | Size | SHA-256 Checksum |"
-            echo "| :--- | :--- | :--- | :--- | :--- |"
-            for info in artifacts/*.info; do
-              # Load key=value pairs into temporary environment
-              unset FLAVOR BRANCH DESC ZIP_NAME ZIP_SIZE ZIP_SHA256
-              source "$info"
-              echo "| **$FLAVOR** | $DESC | \`$ZIP_NAME\` | $ZIP_SIZE | \`$ZIP_SHA256\` |"
-            done
-            echo ""
             echo "### Branch and Commit Details"
             for info in artifacts/*.info; do
               source "$info"
               echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - *$COMMIT_SUBJECT*"
             done
-            echo ""
-            echo "### Kernel Details and Toolchains"
-            echo "- **Kernel Version:** \`5.4.210-qgki-perf\` (KMI locked, Qualcomm Symbol CRC compatible)"
-            echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
-            echo "- **WireGuard:** \`1.0.20220627\`"
-            echo "- **Crash Logging:** Native 256 KB persistent dmesg buffer via \`/proc/last_kmsg\`"
-            echo "- **Build Time:** $BUILD_TIME"
             echo ""
             echo "### Full Checksums (SHA-256)"
             echo '```text'
