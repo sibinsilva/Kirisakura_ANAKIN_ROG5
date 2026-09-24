@@ -21,6 +21,7 @@
 #include <linux/export.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/sched/clock.h>
 #include <linux/sched.h>
@@ -1658,6 +1659,22 @@ static struct file_operations last_logcat_proc_ops = {
 };
 /* ASUS_BSP Paul --- */
 
+static char *last_kmsg_buf;
+static size_t last_kmsg_len;
+
+static ssize_t last_kmsg_proc_read(struct file *file, char __user *buf,
+				   size_t count, loff_t *ppos)
+{
+	if (!last_kmsg_buf || !last_kmsg_len)
+		return 0;
+	return simple_read_from_buffer(buf, count, ppos, last_kmsg_buf, last_kmsg_len);
+}
+
+static const struct file_operations last_kmsg_proc_ops = {
+	.read = last_kmsg_proc_read,
+	.llseek = default_llseek,
+};
+
 void trigger_slowlog_work(struct work_struct *work)
 {
 	int ret = -1;
@@ -1705,6 +1722,26 @@ static int __init proc_asusdebug_init(void)
 	proc_create("asusdebug-switch", S_IRWXUGO, NULL, &turnon_asusdebug_proc_ops);
 	proc_create("last_logcat", S_IWUGO, NULL, &last_logcat_proc_ops); /* ASUS_BSP Paul +++ */
 	PRINTK_BUFFER_VA = ioremap(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
+	if (PRINTK_BUFFER_VA) {
+		last_kmsg_len = strnlen(PRINTK_BUFFER_VA, PRINTK_BUFFER_SLOT_SIZE);
+		if (last_kmsg_len > 0) {
+			last_kmsg_buf = kvmalloc(last_kmsg_len + 1, GFP_KERNEL);
+			if (last_kmsg_buf) {
+				memcpy_fromio(last_kmsg_buf, PRINTK_BUFFER_VA, last_kmsg_len);
+				last_kmsg_buf[last_kmsg_len] = '\0';
+				/* Validate if buffer starts with printable text or newline */
+				if ((unsigned char)last_kmsg_buf[0] < 32 && last_kmsg_buf[0] != '\n' && last_kmsg_buf[0] != '\r') {
+					kvfree(last_kmsg_buf);
+					last_kmsg_buf = NULL;
+					last_kmsg_len = 0;
+				} else {
+					pr_info("[ASDF] preserved %zu bytes from persistent buffer\n", last_kmsg_len);
+				}
+			}
+		}
+		proc_create("last_kmsg", 0444, NULL, &last_kmsg_proc_ops);
+		printk_buffer_rebase();
+	}
 	register_minidump_log_buf();
 	mutex_init(&mA);
 	mutex_init(&mA_erc);//Record the important power event
