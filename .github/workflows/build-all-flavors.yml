@@ -265,26 +265,26 @@ jobs:
           if [ -z "$RELEASE_TAG" ]; then
             RELEASE_TAG="v3.4.0-susfs-${BUILD_DATE}"
           fi
-          RELEASE_NAME="Kirisakura ROG 5 (All Flavors) — ${RELEASE_DATE}"
+          RELEASE_NAME="Kirisakura ROG 5/5s — ${RELEASE_DATE}"
 
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
 
           {
-            echo "## Kirisakura Kernel - ASUS ROG Phone 5 (ZS673KS)"
+            echo "## Kirisakura Kernel — ASUS ROG Phone 5/5s"
             echo "Unified Multi-Flavor Release - ${RELEASE_DATE}"
             echo ""
             if [ "${{ inputs.is_prerelease }}" = "true" ]; then
-              echo "> **Pre-Release Build:** Contains experimental or preview changes."
+              echo "> Pre-release build."
               echo ""
             fi
-            echo "### Branch and Commit Details"
+            echo "### Commits"
             for info in artifacts/*.info; do
               source "$info"
-              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - *$COMMIT_SUBJECT*"
+              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - $COMMIT_SUBJECT"
             done
             echo ""
-            echo "### Full Checksums (SHA-256)"
+            echo "### SHA-256 Checksums"
             echo '```text'
             for info in artifacts/*.info; do
               source "$info"
