@@ -1665,9 +1665,11 @@ static size_t last_kmsg_len;
 static ssize_t last_kmsg_proc_read(struct file *file, char __user *buf,
 				   size_t count, loff_t *ppos)
 {
-	if (!last_kmsg_buf || !last_kmsg_len)
+	size_t size = last_kmsg_len ? last_kmsg_len : PRINTK_BUFFER_SLOT_SIZE;
+
+	if (!last_kmsg_buf)
 		return 0;
-	return simple_read_from_buffer(buf, count, ppos, last_kmsg_buf, last_kmsg_len);
+	return simple_read_from_buffer(buf, count, ppos, last_kmsg_buf, size);
 }
 
 static const struct file_operations last_kmsg_proc_ops = {
@@ -1725,29 +1727,25 @@ static int __init proc_asusdebug_init(void)
 	if (PRINTK_BUFFER_VA) {
 		last_kmsg_buf = kvmalloc(PRINTK_BUFFER_SLOT_SIZE + 1, GFP_KERNEL);
 		if (last_kmsg_buf) {
-			memcpy_fromio(last_kmsg_buf, PRINTK_BUFFER_VA, PRINTK_BUFFER_SLOT_SIZE);
+			size_t i;
+			volatile u8 *src = (volatile u8 *)PRINTK_BUFFER_VA;
+			u8 *dst = (u8 *)last_kmsg_buf;
+
+			/* Byte-by-byte copy avoids ldp (load pair) on Device memory
+			 * which triggers an alignment fault on ARMv8.5 Kryo 680. */
+			for (i = 0; i < PRINTK_BUFFER_SLOT_SIZE; i++)
+				dst[i] = src[i];
 			last_kmsg_buf[PRINTK_BUFFER_SLOT_SIZE] = '\0';
+
 			last_kmsg_len = strnlen(last_kmsg_buf, PRINTK_BUFFER_SLOT_SIZE);
-			if (last_kmsg_len > 0) {
-				size_t i;
-				bool has_ascii = false;
-				for (i = 0; i < min_t(size_t, last_kmsg_len, 256); i++) {
-					if (last_kmsg_buf[i] >= 32 && last_kmsg_buf[i] <= 126) {
-						has_ascii = true;
-						break;
-					}
-				}
-				if (!has_ascii) {
-					kvfree(last_kmsg_buf);
-					last_kmsg_buf = NULL;
-					last_kmsg_len = 0;
-				} else {
-					pr_info("[ASDF] preserved %zu bytes from persistent buffer\n", last_kmsg_len);
-				}
-			} else {
-				kvfree(last_kmsg_buf);
-				last_kmsg_buf = NULL;
-			}
+			printk("[ASDF] init: VA=%p b0=0x%02x b1=0x%02x b2=0x%02x b3=0x%02x len=%zu\n",
+			       PRINTK_BUFFER_VA,
+			       (u8)last_kmsg_buf[0], (u8)last_kmsg_buf[1],
+			       (u8)last_kmsg_buf[2], (u8)last_kmsg_buf[3],
+			       last_kmsg_len);
+			if (last_kmsg_len > 0)
+				pr_info("[ASDF] preserved %zu bytes from persistent buffer\n",
+					last_kmsg_len);
 		}
 		proc_create("last_kmsg", 0444, NULL, &last_kmsg_proc_ops);
 		printk_buffer_rebase();
