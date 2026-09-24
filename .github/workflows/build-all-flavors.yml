@@ -265,44 +265,26 @@ jobs:
           if [ -z "$RELEASE_TAG" ]; then
             RELEASE_TAG="v3.4.0-susfs-${BUILD_DATE}"
           fi
-          RELEASE_NAME="Kirisakura ROG 5 (All Flavors) — ${RELEASE_DATE}"
+          RELEASE_NAME="Kirisakura ROG 5/5s — ${RELEASE_DATE}"
 
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
 
           {
-            echo "## Kirisakura Kernel - ASUS ROG Phone 5 (ZS673KS)"
+            echo "## Kirisakura Kernel — ASUS ROG Phone 5/5s"
             echo "Unified Multi-Flavor Release - ${RELEASE_DATE}"
             echo ""
             if [ "${{ inputs.is_prerelease }}" = "true" ]; then
-              echo "> **Pre-Release Build:** Contains experimental or preview changes."
+              echo "> Pre-release build."
               echo ""
             fi
-            echo "### Flavors and Downloads"
-            echo ""
-            echo "| Flavor | Description | Package Name | Size | SHA-256 Checksum |"
-            echo "| :--- | :--- | :--- | :--- | :--- |"
-            for info in artifacts/*.info; do
-              # Load key=value pairs into temporary environment
-              unset FLAVOR BRANCH DESC ZIP_NAME ZIP_SIZE ZIP_SHA256
-              source "$info"
-              echo "| **$FLAVOR** | $DESC | \`$ZIP_NAME\` | $ZIP_SIZE | \`$ZIP_SHA256\` |"
-            done
-            echo ""
-            echo "### Branch and Commit Details"
+            echo "### Commits"
             for info in artifacts/*.info; do
               source "$info"
-              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - *$COMMIT_SUBJECT*"
+              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - $COMMIT_SUBJECT"
             done
             echo ""
-            echo "### Kernel Details and Toolchains"
-            echo "- **Kernel Version:** \`5.4.210-qgki-perf\` (KMI locked, Qualcomm Symbol CRC compatible)"
-            echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
-            echo "- **WireGuard:** \`1.0.20220627\`"
-            echo "- **Crash Logging:** Native 256 KB persistent dmesg buffer via \`/proc/last_kmsg\`"
-            echo "- **Build Time:** $BUILD_TIME"
-            echo ""
-            echo "### Full Checksums (SHA-256)"
+            echo "### SHA-256 Checksums"
             echo '```text'
             for info in artifacts/*.info; do
               source "$info"
