@@ -1723,20 +1723,30 @@ static int __init proc_asusdebug_init(void)
 	proc_create("last_logcat", S_IWUGO, NULL, &last_logcat_proc_ops); /* ASUS_BSP Paul +++ */
 	PRINTK_BUFFER_VA = ioremap(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
 	if (PRINTK_BUFFER_VA) {
-		last_kmsg_len = strnlen(PRINTK_BUFFER_VA, PRINTK_BUFFER_SLOT_SIZE);
-		if (last_kmsg_len > 0) {
-			last_kmsg_buf = kvmalloc(last_kmsg_len + 1, GFP_KERNEL);
-			if (last_kmsg_buf) {
-				memcpy_fromio(last_kmsg_buf, PRINTK_BUFFER_VA, last_kmsg_len);
-				last_kmsg_buf[last_kmsg_len] = '\0';
-				/* Validate if buffer starts with printable text or newline */
-				if ((unsigned char)last_kmsg_buf[0] < 32 && last_kmsg_buf[0] != '\n' && last_kmsg_buf[0] != '\r') {
+		last_kmsg_buf = kvmalloc(PRINTK_BUFFER_SLOT_SIZE + 1, GFP_KERNEL);
+		if (last_kmsg_buf) {
+			memcpy_fromio(last_kmsg_buf, PRINTK_BUFFER_VA, PRINTK_BUFFER_SLOT_SIZE);
+			last_kmsg_buf[PRINTK_BUFFER_SLOT_SIZE] = '\0';
+			last_kmsg_len = strnlen(last_kmsg_buf, PRINTK_BUFFER_SLOT_SIZE);
+			if (last_kmsg_len > 0) {
+				size_t i;
+				bool has_ascii = false;
+				for (i = 0; i < min_t(size_t, last_kmsg_len, 256); i++) {
+					if (last_kmsg_buf[i] >= 32 && last_kmsg_buf[i] <= 126) {
+						has_ascii = true;
+						break;
+					}
+				}
+				if (!has_ascii) {
 					kvfree(last_kmsg_buf);
 					last_kmsg_buf = NULL;
 					last_kmsg_len = 0;
 				} else {
 					pr_info("[ASDF] preserved %zu bytes from persistent buffer\n", last_kmsg_len);
 				}
+			} else {
+				kvfree(last_kmsg_buf);
+				last_kmsg_buf = NULL;
 			}
 		}
 		proc_create("last_kmsg", 0444, NULL, &last_kmsg_proc_ops);
