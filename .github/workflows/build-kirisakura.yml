@@ -27,22 +27,14 @@ jobs:
           fetch-depth: 1
           submodules: true
 
-      - name: Patch KernelSU (SukiSU-Ultra) submodule for pre-5.10 kernels
+      - name: Patch KernelSU (ReSukiSU) submodule for pre-5.10 kernels
         run: |
           set -e
-          # ksud.c calls ksu_selinux_hide_handle_{post_fs_data,second_stage}()
-          # unconditionally, but ksu.c only compiles that feature in
-          # (selinux_hide.h/.c) on kernel >= 5.10 - this kernel is 5.4, so
-          # the calls are left undeclared. Gate the call sites the same way
-          # the feature itself is gated upstream.
-          KSUD="KernelSU/kernel/runtime/ksud.c"
+          # Fix strncpy_from_user_nofault typo in sucompat.c on pre-5.8 kernels
           sed -i \
-            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
-            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/a\#endif' \
-            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
-            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/a\#endif' \
-            "$KSUD"
-          grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' "$KSUD"
+            's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' \
+            KernelSU/kernel/feature/sucompat.c
+          grep -c 'ksu_strncpy_from_user_nofault' KernelSU/kernel/feature/sucompat.c
 
           # event.c has one stray call to the bare kernel API
           # strncpy_from_user_nofault() (doesn't exist pre-5.8) instead of
@@ -181,12 +173,12 @@ jobs:
           RELEASE_DATE=$(date -u +'%Y-%m-%d')
 
           # Determine artifact names & release tags
-          ZIP_NAME="Kirisakura-ROG5-SuKiSU-Ultra-v4.1.3-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+          ZIP_NAME="Kirisakura-ROG5-ReSukiSU-v4.2.0-rc3-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
           RELEASE_TAG="${{ inputs.release_tag }}"
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v4.1.3-susfs-${BUILD_DATE}-${SHORT_SHA}"
+            RELEASE_TAG="v4.2.0-rc3-susfs-${BUILD_DATE}-${SHORT_SHA}"
           fi
-          RELEASE_NAME="Kirisakura ROG 5 (SuKiSU-Ultra) — ${RELEASE_DATE} (${SHORT_SHA})"
+          RELEASE_NAME="Kirisakura ROG 5 (ReSukiSU) — ${RELEASE_DATE} (${SHORT_SHA})"
 
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
@@ -220,7 +212,7 @@ jobs:
 
           # Generate release notes markdown
           {
-            echo "## 🌸 Kirisakura Kernel (SuKiSU-Ultra) for ASUS ROG Phone 5 (ZS673KS)"
+            echo "## Kirisakura Kernel (ReSukiSU) for ASUS ROG Phone 5 (ZS673KS)"
             echo ""
             echo "### 📌 Build Details"
             echo "- **Branch:** \`$BRANCH_NAME\`"
@@ -232,7 +224,7 @@ jobs:
             echo ""
             echo "### 🛠 Toolchains & Features"
             echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
-            echo "- **SukiSU-Ultra:** v4.1.3 + Legacy SUSFS"
+            echo "- **ReSukiSU:** v4.2.0-rc3 + Legacy SUSFS"
             echo "- **WireGuard:** \`1.0.20220627\`"
             echo ""
             echo "### 🔒 Checksum (SHA-256)"

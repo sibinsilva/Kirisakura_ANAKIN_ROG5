@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Kirisakura-Kernel (SuKiSU Ultra Edition)
+kernel.string=Kirisakura-Kernel (ReSukiSU Edition)
 do.devicecheck=1
 do.modules=1
 do.systemless=1
