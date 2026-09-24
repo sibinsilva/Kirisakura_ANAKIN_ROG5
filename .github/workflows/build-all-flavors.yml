@@ -65,8 +65,10 @@ jobs:
 
           # Compat patches for pre-5.8/pre-5.10 kernels across all KernelSU submodule sources
           if [ -d "KernelSU/kernel" ]; then
-            # Fix strncpy_from_user_nofault (pre-5.8 compat)
-            find KernelSU/kernel -type f -name "*.c" -exec sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/g' {} + || true
+            # Inject strncpy_from_user_nofault inline compat for pre-5.8 kernels
+            if [ -f "KernelSU/kernel/include/klog.h" ]; then
+              python3 -c "p='KernelSU/kernel/include/klog.h'; c=open(p).read(); t='#define __KSU_H_KLOG'; r=t+'\n#include <linux/version.h>\n#include <linux/uaccess.h>\n#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)\nstatic inline long strncpy_from_user_nofault(char *dst, const void __user *src, long count) {\n    return strncpy_from_user(dst, (const char __user *)src, count);\n}\n#endif'; open(p,'w').write(c.replace(t,r,1)) if (t in c and 'strncpy_from_user_nofault' not in c) else None"
+            fi
             # Fix linux/pgtable.h -> asm/pgtable.h (pre-5.8 compat)
             find KernelSU/kernel -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's/<linux\/pgtable\.h>/<asm\/pgtable\.h>/g' {} + || true
           fi
