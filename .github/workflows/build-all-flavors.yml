@@ -1,0 +1,320 @@
+name: Build All Flavors (Unified Release)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag name for the release (leave blank to auto-generate)"
+        type: string
+        default: ""
+      is_prerelease:
+        description: "Mark release as Pre-release"
+        type: boolean
+        default: false
+
+env:
+  CLANG_VERSION: clang-r450784e
+  CLANG_TARBALL_URL: https://github.com/sibinsilva/Kirisakura_ANAKIN_ROG5/releases/download/toolchain-clang-r450784e/clang-r450784e.tar.zst
+  GCC_BRANCH: main-kernel
+  WIREGUARD_TARBALL_URL: https://github.com/sibinsilva/Kirisakura_ANAKIN_ROG5/releases/download/wireguard-linux-compat-1.0.20220627/wireguard-linux-compat-1.0.20220627.tar.xz
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.flavor }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: main
+            flavor: Stock
+            desc: "Stock / Vanilla (pure kernel, no root)"
+          - branch: release/ksu-next
+            flavor: KSU-Next
+            desc: "KernelSU-Next v3.4.0 (33294) + Legacy SUSFS"
+          - branch: release/sukisu-ultra
+            flavor: SuKiSU-Ultra
+            desc: "SukiSU-Ultra v4.1.3 + Legacy SUSFS"
+    steps:
+      - name: Checkout ${{ matrix.branch }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 1
+          submodules: true
+
+      - name: Patch KernelSU (SukiSU-Ultra) submodule for pre-5.10 kernels
+        if: hashFiles('KernelSU/kernel/runtime/ksud.c') != ''
+        run: |
+          set -e
+          KSUD="KernelSU/kernel/runtime/ksud.c"
+          sed -i \
+            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
+            -e '/^    ksu_selinux_hide_handle_post_fs_data();$/a\#endif' \
+            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
+            -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/a\#endif' \
+            "$KSUD"
+          grep -q '#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' "$KSUD"
+
+          sed -i \
+            's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/' \
+            KernelSU/kernel/sulog/event.c
+          grep -c 'ksu_strncpy_from_user_nofault' KernelSU/kernel/sulog/event.c
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex libssl-dev libelf-dev \
+            device-tree-compiler python3 cpio lz4 zip unzip rsync zstd
+
+      - name: Cache Clang toolchain
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: toolchains/clang
+          key: clang-${{ env.CLANG_VERSION }}
+
+      - name: Fetch Clang toolchain
+        if: steps.cache-clang.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          mkdir -p toolchains
+          curl -sSL "${CLANG_TARBALL_URL}" -o clang.tar.zst
+          mkdir -p toolchains/clang
+          tar -I zstd -xf clang.tar.zst -C toolchains/clang --strip-components=2 clang-r450784e/clang-r450784e
+          rm -f clang.tar.zst
+
+      - name: Cache GCC arm64 toolchain
+        id: cache-gcc-arm64
+        uses: actions/cache@v4
+        with:
+          path: toolchains/gcc-arm64
+          key: gcc-arm64-4.9-${{ env.GCC_BRANCH }}
+
+      - name: Fetch GCC arm64 toolchain
+        if: steps.cache-gcc-arm64.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 -b "${GCC_BRANCH}" \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+            toolchains/gcc-arm64
+
+      - name: Cache GCC arm32 toolchain
+        id: cache-gcc-arm32
+        uses: actions/cache@v4
+        with:
+          path: toolchains/gcc-arm32
+          key: gcc-arm32-4.9-${{ env.GCC_BRANCH }}
+
+      - name: Fetch GCC arm32 toolchain
+        if: steps.cache-gcc-arm32.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 -b "${GCC_BRANCH}" \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 \
+            toolchains/gcc-arm32
+
+      - name: Fetch WireGuard source
+        run: |
+          set -e
+          rm -rf net/wireguard
+          mkdir -p net/wireguard
+          curl -sSL "${WIREGUARD_TARBALL_URL}" -o wireguard.tar.xz
+          tar -tJf wireguard.tar.xz > /dev/null
+          tar -C net/wireguard -xJf wireguard.tar.xz
+          rm -f wireguard.tar.xz
+          test -f net/wireguard/crypto/Kbuild.include
+          touch net/wireguard/.check
+
+      - name: Build kernel
+        run: |
+          set -e
+          mkdir -p out_cfi
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export LOCALVERSION=""
+          export DTC_EXT=/usr/bin/dtc
+
+          CLANG_PATH="$GITHUB_WORKSPACE/toolchains/clang/bin"
+          GCC_ARM64_BIN="$GITHUB_WORKSPACE/toolchains/gcc-arm64/bin"
+          GCC_ARM32_BIN="$GITHUB_WORKSPACE/toolchains/gcc-arm32/bin"
+          export PATH="$CLANG_PATH:$GCC_ARM64_BIN:$GCC_ARM32_BIN:$PATH"
+
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CROSS_COMPILE="$GCC_ARM64_BIN/aarch64-linux-android-"
+          export CROSS_COMPILE_COMPAT="$GCC_ARM32_BIN/arm-linux-androideabi-"
+          export CROSS_COMPILE_ARM32="$GCC_ARM32_BIN/arm-linux-androideabi-"
+
+          export CLANG_AR="$CLANG_PATH/llvm-ar"
+          export CLANG_CC="$CLANG_PATH/clang"
+          export CLANG_CCXX="$CLANG_PATH/clang++"
+          export CLANG_LD="$CLANG_PATH/ld.lld"
+          export CLANG_NM="$CLANG_PATH/llvm-nm"
+          export CLANG_STRIP="$CLANG_PATH/llvm-strip"
+          export CLANG_OC="$CLANG_PATH/llvm-objcopy"
+          export CLANG_OD="$CLANG_PATH/llvm-objdump"
+          export CLANG_OS="$CLANG_PATH/llvm-size"
+          export CLANG_RE="$CLANG_PATH/llvm-readelf"
+
+          export CC="$CLANG_CC"
+          export HOST_CC="$CLANG_CC"
+          export LD="$CLANG_LD"
+
+          export ASUS_BUILD_PROJECT=ZS673KS
+          export ASUS_ZS673KS_PROJECT
+
+          MAKE_ARGS="LLVM=1 CC=$CLANG_CC LD=$CLANG_LD AR=$CLANG_AR STRIP=$CLANG_STRIP \
+            OBJCOPY=$CLANG_OC NM=$CLANG_NM OBJDUMP=$CLANG_OD OBJSIZE=$CLANG_OS READELF=$CLANG_RE \
+            HOSTCC=$CLANG_CC HOSTCXX=$CLANG_CCXX HOSTAR=$CLANG_AR HOSTLD=$CLANG_LD O=out_cfi"
+
+          make $MAKE_ARGS kirisakura_defconfig
+          make $MAKE_ARGS -j"$(nproc)"
+
+      - name: Package flashable zip & Generate Metadata
+        run: |
+          set -e
+
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          FULL_SHA=$(git rev-parse HEAD)
+          COMMIT_SUBJECT=$(git log -1 --format='%s')
+          COMMIT_AUTHOR=$(git log -1 --format='%an')
+          BUILD_DATE=$(date -u +'%Y%m%d')
+
+          FLAVOR="${{ matrix.flavor }}"
+          ZIP_NAME="Kirisakura-ROG5-${FLAVOR}-v3.4.0-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+
+          # Verify build outputs exist before packaging
+          if [ ! -f "out_cfi/arch/arm64/boot/Image.gz" ]; then
+            echo "::error::Image.gz not found!"
+            exit 1
+          fi
+          if [ ! -f "out_cfi/drivers/input/misc/sx932x_2nd.ko" ]; then
+            echo "::error::sx932x_2nd.ko not found!"
+            exit 1
+          fi
+          if [ ! -f "out_cfi/drivers/input/touchscreen/ROG5_TP2/focaltech_fts_rog2.ko" ]; then
+            echo "::error::focaltech_fts_rog2.ko not found!"
+            exit 1
+          fi
+
+          mkdir -p AnyKernel3/modules/vendor/lib/modules
+          cp out_cfi/arch/arm64/boot/Image.gz AnyKernel3/Image.gz
+          cp out_cfi/drivers/input/misc/sx932x_2nd.ko AnyKernel3/modules/vendor/lib/modules/sx932x_2nd.ko
+          cp out_cfi/drivers/input/touchscreen/ROG5_TP2/focaltech_fts_rog2.ko AnyKernel3/modules/vendor/lib/modules/focaltech_fts_rog2.ko
+
+          cd AnyKernel3
+          zip -r9 "../$ZIP_NAME" . -x "*.git*" "*README*" "*LICENSE*" "*patch*" > /dev/null
+          cd ..
+
+          ZIP_SHA256=$(sha256sum "$ZIP_NAME" | awk '{print $1}')
+          ZIP_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
+
+          mkdir -p output
+          mv "$ZIP_NAME" output/
+
+          # Export metadata for the release job
+          {
+            echo "FLAVOR=\"${FLAVOR}\""
+            echo "BRANCH=\"${{ matrix.branch }}\""
+            echo "DESC=\"${{ matrix.desc }}\""
+            echo "ZIP_NAME=\"${ZIP_NAME}\""
+            echo "ZIP_SIZE=\"${ZIP_SIZE}\""
+            echo "ZIP_SHA256=\"${ZIP_SHA256}\""
+            echo "SHORT_SHA=\"${SHORT_SHA}\""
+            echo "FULL_SHA=\"${FULL_SHA}\""
+            echo "COMMIT_SUBJECT=\"${COMMIT_SUBJECT//\"/\\\"}\""
+            echo "COMMIT_AUTHOR=\"${COMMIT_AUTHOR//\"/\\\"}\""
+          } > "output/${FLAVOR}.info"
+
+      - name: Upload artifact (${{ matrix.flavor }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.flavor }}
+          path: output/*
+          if-no-files-found: error
+
+  release:
+    name: Consolidated GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: kernel-*
+          merge-multiple: true
+
+      - name: Generate Unified Release Notes
+        run: |
+          set -e
+
+          BUILD_DATE=$(date -u +'%Y%m%d')
+          RELEASE_DATE=$(date -u +'%Y-%m-%d')
+          BUILD_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          if [ -z "$RELEASE_TAG" ]; then
+            RELEASE_TAG="v3.4.0-susfs-${BUILD_DATE}"
+          fi
+          RELEASE_NAME="Kirisakura ROG 5 (All Flavors) — ${RELEASE_DATE}"
+
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
+
+          {
+            echo "## Kirisakura Kernel for ASUS ROG Phone 5 (ZS673KS)"
+            echo "Unified Multi-Flavor Release — ${RELEASE_DATE}"
+            echo ""
+            if [ "${{ inputs.is_prerelease }}" = "true" ]; then
+              echo "> ⚠️ **Pre-Release Build:** Contains experimental or preview changes."
+              echo ""
+            fi
+            echo "### 📦 Available Flavors & Downloads"
+            echo ""
+            echo "| Flavor | Description | Package Name | Size | SHA-256 Checksum |"
+            echo "| :--- | :--- | :--- | :--- | :--- |"
+            for info in artifacts/*.info; do
+              # Load key=value pairs into temporary environment
+              unset FLAVOR BRANCH DESC ZIP_NAME ZIP_SIZE ZIP_SHA256
+              source "$info"
+              echo "| **$FLAVOR** | $DESC | \`$ZIP_NAME\` | $ZIP_SIZE | \`$ZIP_SHA256\` |"
+            done
+            echo ""
+            echo "### 📌 Branch & Commit Details"
+            for info in artifacts/*.info; do
+              source "$info"
+              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) — *$COMMIT_SUBJECT*"
+            done
+            echo ""
+            echo "### 🛠 Kernel Details & Toolchains"
+            echo "- **Kernel Version:** \`5.4.210-qgki-perf\` (KMI locked, Qualcomm Symbol CRC compatible)"
+            echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
+            echo "- **WireGuard:** \`1.0.20220627\`"
+            echo "- **Crash Logging:** Native 256 KB persistent dmesg buffer via \`/proc/last_kmsg\` (zero battery overhead)"
+            echo "- **Build Time:** $BUILD_TIME"
+            echo ""
+            echo "### 🔒 Full Checksums (SHA-256)"
+            echo '```text'
+            for info in artifacts/*.info; do
+              source "$info"
+              echo "$ZIP_SHA256  $ZIP_NAME"
+            done
+            echo '```'
+          } > release_notes.md
+
+          # Summary for GitHub Actions run view
+          cat release_notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish Consolidated GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ inputs.is_prerelease }}
+          body_path: release_notes.md
+          files: artifacts/*.zip
