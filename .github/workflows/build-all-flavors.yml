@@ -63,9 +63,12 @@ jobs:
               "$KSUD" || true
           fi
 
-          # Compat patch for strncpy_from_user_nofault across all KernelSU submodule C sources
+          # Compat patches for pre-5.8/pre-5.10 kernels across all KernelSU submodule sources
           if [ -d "KernelSU/kernel" ]; then
+            # Fix strncpy_from_user_nofault (pre-5.8 compat)
             find KernelSU/kernel -type f -name "*.c" -exec sed -i 's/\bstrncpy_from_user_nofault(/ksu_strncpy_from_user_nofault(/g' {} + || true
+            # Fix linux/pgtable.h -> asm/pgtable.h (pre-5.8 compat)
+            find KernelSU/kernel -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's/<linux\/pgtable\.h>/<asm\/pgtable\.h>/g' {} + || true
           fi
 
       - name: Install build dependencies
