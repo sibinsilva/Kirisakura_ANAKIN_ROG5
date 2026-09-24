@@ -49,30 +49,6 @@ jobs:
           fetch-depth: 1
           submodules: true
 
-      - name: Patch KernelSU submodules for pre-5.10 kernels
-        run: |
-          set -e
-          # SukiSU-Ultra ksud.c fix (legacy)
-          if [ -f "KernelSU/kernel/runtime/ksud.c" ]; then
-            KSUD="KernelSU/kernel/runtime/ksud.c"
-            sed -i \
-              -e '/^    ksu_selinux_hide_handle_post_fs_data();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
-              -e '/^    ksu_selinux_hide_handle_post_fs_data();$/a\#endif' \
-              -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/i\#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)' \
-              -e '/^\( *\)ksu_selinux_hide_handle_second_stage();$/a\#endif' \
-              "$KSUD" || true
-          fi
-
-          # Compat patches for pre-5.8/pre-5.10 kernels across all KernelSU submodule sources
-          if [ -d "KernelSU/kernel" ]; then
-            # Inject pre-5.8 _nofault inline compat into klog.h
-            if [ -f "KernelSU/kernel/include/klog.h" ]; then
-              python3 -c "p='KernelSU/kernel/include/klog.h'; c=open(p).read(); t='#define __KSU_H_KLOG'; r=t+'\n#include <linux/version.h>\n#include <linux/uaccess.h>\n#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)\nstatic inline long copy_to_kernel_nofault(void *dst, const void *src, size_t size) {\n    return probe_kernel_write(dst, src, size);\n}\nstatic inline long copy_from_kernel_nofault(void *dst, const void *src, size_t size) {\n    return probe_kernel_read(dst, src, size);\n}\nstatic inline long copy_from_user_nofault(void *dst, const void __user *src, size_t size) {\n    return copy_from_user(dst, src, size);\n}\nstatic inline long strncpy_from_user_nofault(char *dst, const void __user *src, long count) {\n    return strncpy_from_user(dst, (const char __user *)src, count);\n}\n#endif'; open(p,'w').write(c.replace(t,r,1)) if (t in c and 'copy_to_kernel_nofault' not in c) else None"
-            fi
-            # Fix linux/pgtable.h -> asm/pgtable.h (pre-5.8 compat)
-            find KernelSU/kernel -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's/<linux\/pgtable\.h>/<asm\/pgtable\.h>/g' {} + || true
-          fi
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
