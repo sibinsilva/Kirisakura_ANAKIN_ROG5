@@ -435,7 +435,7 @@ DEFINE_RAW_SPINLOCK(logbuf_lock);
 		printk_safe_exit_irqrestore(flags);	\
 	} while (0)
 
-#ifdef CONFIG_ASUS_POWER_DEBUG
+#if defined(CONFIG_ASUS_POWER_DEBUG) || defined(CONFIG_MACH_ASUS_ZS673KS)
 static char *asus_log_buf = NULL;
 static bool is_logging_to_asus_buffer = false;
 int boot_after_60sec = 0;
@@ -465,7 +465,7 @@ static int write_to_asus_log_buffer(const char *text, size_t text_len,
 	}
 
 	if (log_write_index >= PRINTK_BUFFER_SLOT_SIZE) {
-		return -2;
+		log_write_index = 0;
 	}
 
 
@@ -2150,11 +2150,13 @@ int vprintk_store(int facility, int level,
 
 	if (dict)
 		lflags |= LOG_NEWLINE;
-#ifdef CONFIG_ASUS_POWER_DEBUG
+#if defined(CONFIG_ASUS_POWER_DEBUG) || defined(CONFIG_MACH_ASUS_ZS673KS)
 	if (is_logging_to_asus_buffer) {
-		   write_to_asus_log_buffer(text, text_len, lflags);
+		write_to_asus_log_buffer(text, text_len, lflags);
 	}
+#endif
 
+#ifdef CONFIG_ASUS_POWER_DEBUG
 	return log_output(facility, level, lflags,
 			  dict, dictlen, text, text_len,ts);
 #else
@@ -3615,7 +3617,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
 
 #endif
 
-#ifdef CONFIG_ASUS_POWER_DEBUG
+#if defined(CONFIG_ASUS_POWER_DEBUG) || defined(CONFIG_MACH_ASUS_ZS673KS)
 void printk_buffer_rebase(void)
 {
 /*
