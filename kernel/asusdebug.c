@@ -21,6 +21,7 @@
 #include <linux/export.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/sched/clock.h>
 #include <linux/sched.h>
@@ -1658,6 +1659,22 @@ static struct file_operations last_logcat_proc_ops = {
 };
 /* ASUS_BSP Paul --- */
 
+static char *last_kmsg_buf;
+
+static ssize_t last_kmsg_proc_read(struct file *file, char __user *buf,
+				   size_t count, loff_t *ppos)
+{
+	if (!last_kmsg_buf)
+		return 0;
+	return simple_read_from_buffer(buf, count, ppos, last_kmsg_buf,
+				       PRINTK_BUFFER_SLOT_SIZE);
+}
+
+static const struct file_operations last_kmsg_proc_ops = {
+	.read = last_kmsg_proc_read,
+	.llseek = default_llseek,
+};
+
 void trigger_slowlog_work(struct work_struct *work)
 {
 	int ret = -1;
@@ -1705,6 +1722,38 @@ static int __init proc_asusdebug_init(void)
 	proc_create("asusdebug-switch", S_IRWXUGO, NULL, &turnon_asusdebug_proc_ops);
 	proc_create("last_logcat", S_IWUGO, NULL, &last_logcat_proc_ops); /* ASUS_BSP Paul +++ */
 	PRINTK_BUFFER_VA = ioremap(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
+	if (PRINTK_BUFFER_VA) {
+		last_kmsg_buf = kvmalloc(PRINTK_BUFFER_SLOT_SIZE + 1, GFP_KERNEL);
+		if (last_kmsg_buf) {
+			size_t i, first_ascii;
+			volatile u8 *src = (volatile u8 *)PRINTK_BUFFER_VA;
+			u8 *dst = (u8 *)last_kmsg_buf;
+
+			/* Byte-by-byte copy avoids ldp (load pair) on Device memory
+			 * which triggers an alignment fault on ARMv8.5 Kryo 680. */
+			for (i = 0; i < PRINTK_BUFFER_SLOT_SIZE; i++)
+				dst[i] = src[i];
+			last_kmsg_buf[PRINTK_BUFFER_SLOT_SIZE] = '\0';
+
+			/* Find first printable ASCII character */
+			first_ascii = 0;
+			while (first_ascii < PRINTK_BUFFER_SLOT_SIZE &&
+			       (dst[first_ascii] < 32 || dst[first_ascii] > 126) &&
+			       dst[first_ascii] != '\n' && dst[first_ascii] != '\t')
+				first_ascii++;
+
+			printk("[ASDF] init: VA=%p hex16=%16phC first_ascii@%zu\n",
+			       PRINTK_BUFFER_VA,
+			       dst,
+			       first_ascii);
+			if (first_ascii < PRINTK_BUFFER_SLOT_SIZE)
+				pr_info("[ASDF] preserved %zu bytes (sample: %.32s)\n",
+					PRINTK_BUFFER_SLOT_SIZE - first_ascii,
+					&last_kmsg_buf[first_ascii]);
+		}
+		proc_create("last_kmsg", 0444, NULL, &last_kmsg_proc_ops);
+		printk_buffer_rebase();
+	}
 	register_minidump_log_buf();
 	mutex_init(&mA);
 	mutex_init(&mA_erc);//Record the important power event
