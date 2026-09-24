@@ -1660,16 +1660,14 @@ static struct file_operations last_logcat_proc_ops = {
 /* ASUS_BSP Paul --- */
 
 static char *last_kmsg_buf;
-static size_t last_kmsg_len;
 
 static ssize_t last_kmsg_proc_read(struct file *file, char __user *buf,
 				   size_t count, loff_t *ppos)
 {
-	size_t size = last_kmsg_len ? last_kmsg_len : PRINTK_BUFFER_SLOT_SIZE;
-
 	if (!last_kmsg_buf)
 		return 0;
-	return simple_read_from_buffer(buf, count, ppos, last_kmsg_buf, size);
+	return simple_read_from_buffer(buf, count, ppos, last_kmsg_buf,
+				       PRINTK_BUFFER_SLOT_SIZE);
 }
 
 static const struct file_operations last_kmsg_proc_ops = {
@@ -1727,7 +1725,7 @@ static int __init proc_asusdebug_init(void)
 	if (PRINTK_BUFFER_VA) {
 		last_kmsg_buf = kvmalloc(PRINTK_BUFFER_SLOT_SIZE + 1, GFP_KERNEL);
 		if (last_kmsg_buf) {
-			size_t i;
+			size_t i, first_ascii;
 			volatile u8 *src = (volatile u8 *)PRINTK_BUFFER_VA;
 			u8 *dst = (u8 *)last_kmsg_buf;
 
@@ -1737,15 +1735,21 @@ static int __init proc_asusdebug_init(void)
 				dst[i] = src[i];
 			last_kmsg_buf[PRINTK_BUFFER_SLOT_SIZE] = '\0';
 
-			last_kmsg_len = strnlen(last_kmsg_buf, PRINTK_BUFFER_SLOT_SIZE);
-			printk("[ASDF] init: VA=%p b0=0x%02x b1=0x%02x b2=0x%02x b3=0x%02x len=%zu\n",
+			/* Find first printable ASCII character */
+			first_ascii = 0;
+			while (first_ascii < PRINTK_BUFFER_SLOT_SIZE &&
+			       (dst[first_ascii] < 32 || dst[first_ascii] > 126) &&
+			       dst[first_ascii] != '\n' && dst[first_ascii] != '\t')
+				first_ascii++;
+
+			printk("[ASDF] init: VA=%p hex16=%16phC first_ascii@%zu\n",
 			       PRINTK_BUFFER_VA,
-			       (u8)last_kmsg_buf[0], (u8)last_kmsg_buf[1],
-			       (u8)last_kmsg_buf[2], (u8)last_kmsg_buf[3],
-			       last_kmsg_len);
-			if (last_kmsg_len > 0)
-				pr_info("[ASDF] preserved %zu bytes from persistent buffer\n",
-					last_kmsg_len);
+			       dst,
+			       first_ascii);
+			if (first_ascii < PRINTK_BUFFER_SLOT_SIZE)
+				pr_info("[ASDF] preserved %zu bytes (sample: %.32s)\n",
+					PRINTK_BUFFER_SLOT_SIZE - first_ascii,
+					&last_kmsg_buf[first_ascii]);
 		}
 		proc_create("last_kmsg", 0444, NULL, &last_kmsg_proc_ops);
 		printk_buffer_rebase();
