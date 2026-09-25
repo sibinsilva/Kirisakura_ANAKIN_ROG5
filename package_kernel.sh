@@ -50,6 +50,15 @@ UPLOAD_URL=$(curl -s \
     -F "fileToUpload=@$SCRIPT_DIR/$ZIP_NAME" \
     https://litterbox.catbox.moe/resources/internals/api.php)
 
+if [[ "$UPLOAD_URL" != https://* ]]; then
+    echo "→ Litterbox unavailable, uploading to tmpfiles.org..."
+    UPLOAD_RES=$(curl -s -F "file=@$SCRIPT_DIR/$ZIP_NAME" https://tmpfiles.org/api/v1/upload)
+    RAW_URL=$(echo "$UPLOAD_RES" | grep -o 'https://tmpfiles.org/[a-zA-Z0-9/]*/[^"]*')
+    if [ -n "$RAW_URL" ]; then
+        UPLOAD_URL=$(echo "$RAW_URL" | sed 's|https://tmpfiles.org/|https://tmpfiles.org/dl/|')
+    fi
+fi
+
 if [[ "$UPLOAD_URL" == https://* ]]; then
     echo
     echo "========================================="
@@ -60,5 +69,4 @@ if [[ "$UPLOAD_URL" == https://* ]]; then
 else
     echo "✗ Upload failed: $UPLOAD_URL"
     echo "  Zip is available locally at: $SCRIPT_DIR/$ZIP_NAME"
-    exit 1
 fi
