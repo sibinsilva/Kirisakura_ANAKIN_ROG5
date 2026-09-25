@@ -1267,10 +1267,6 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 	down_read(&uts_sem);
 	memcpy(&tmp, utsname(), sizeof(tmp));
 	up_read(&uts_sem);
-
-	if (!strncmp(tmp.release, "5.4.210", 7)) {
-		snprintf(tmp.release, sizeof(tmp.release), "5.4.302%s", utsname()->release + 7);
-	}
 	if (copy_to_user(name, &tmp, sizeof(tmp)))
 		return -EFAULT;
 
