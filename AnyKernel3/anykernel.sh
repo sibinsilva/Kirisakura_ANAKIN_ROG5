@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Kirisakura-Kernel (Vanilla Edition)
+kernel.string=Kirisakura ROG 5/5s (Vanilla Edition)
 do.devicecheck=1
 do.modules=1
 do.systemless=1
@@ -15,6 +15,10 @@ device.name2=ROG5
 device.name3=I005D
 device.name4=I005DA
 device.name5=ASUS_I005_1
+device.name6=ZS676KS
+device.name7=ROG5s
+device.name8=I005DB
+device.name9=ASUS_I005_2
 supported.versions=
 supported.patchlevels=
 supported.vendorpatchlevels=
@@ -106,16 +110,11 @@ write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_
 # ── Clean up previous systemless Tuxera modules ─────────────────────────
 mount /data 2>/dev/null || true
 if [ -d /data/adb/modules/kirisakura_tuxera ] || [ -d /data/adb/modules_update/kirisakura_tuxera ]; then
-    ui_print " ";
-    ui_print "→ Removing old systemless Tuxera module...";
     rm -rf /data/adb/modules/kirisakura_tuxera
     rm -rf /data/adb/modules_update/kirisakura_tuxera
-    ui_print "✓ Removed old module.";
-    ui_print " ";
 fi
 
 # ── Install automatic Tuxera module loader at boot ──────────────────────
-ui_print "→ Setting up Tuxera OTG Support...";
 mkdir -p /data/adb/service.d
 cat << 'EOF' > /data/adb/service.d/load_tuxera.sh
 #!/system/bin/sh
@@ -133,8 +132,6 @@ EOF
 
 chmod 755 /data/adb/service.d/load_tuxera.sh
 chown 0:0 /data/adb/service.d/load_tuxera.sh
-ui_print "✓ Tuxera OTG Support script installed.";
-ui_print " ";
 
 
 
