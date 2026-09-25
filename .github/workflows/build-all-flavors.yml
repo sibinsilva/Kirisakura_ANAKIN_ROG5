@@ -31,15 +31,19 @@ jobs:
         include:
           - branch: main
             flavor: Stock
+            zip_suffix: "Stock-2.0.1"
             desc: "Stock / Vanilla (pure kernel, no root)"
           - branch: release/ksu-next
             flavor: KSU-Next
+            zip_suffix: "KSU-Next-v3.4.0-susfs"
             desc: "KernelSU-Next v3.4.0 (33294) + Legacy SUSFS"
           - branch: release/sukisu-ultra
             flavor: SuKiSU-Ultra
+            zip_suffix: "SuKiSU-Ultra-v4.2.0-susfs"
             desc: "SukiSU-Ultra v4.2.0 + Legacy SUSFS"
           - branch: release/resukisu
             flavor: ReSukiSU
+            zip_suffix: "ReSukiSU-v4.2.0-rc3-susfs"
             desc: "ReSukiSU v4.2.0-rc3 + Legacy SUSFS"
     steps:
       - name: Checkout ${{ matrix.branch }}
@@ -168,7 +172,7 @@ jobs:
           BUILD_DATE=$(date -u +'%Y%m%d')
 
           FLAVOR="${{ matrix.flavor }}"
-          ZIP_NAME="Kirisakura-ROG5-${FLAVOR}-v3.4.0-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+          ZIP_NAME="Kirisakura-ROG5_5s-${{ matrix.zip_suffix }}-${BUILD_DATE}.zip"
 
           # Verify build outputs exist before packaging
           if [ ! -f "out_cfi/arch/arm64/boot/Image.gz" ]; then
@@ -244,15 +248,15 @@ jobs:
 
           RELEASE_TAG="${{ inputs.release_tag }}"
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v3.4.0-susfs-${BUILD_DATE}"
+            RELEASE_TAG="v2.0.1-${BUILD_DATE}"
           fi
-          RELEASE_NAME="Kirisakura ROG 5/5s — ${RELEASE_DATE}"
+          RELEASE_NAME="Kirisakura ROG 5/5s (ANAKIN) — ${RELEASE_DATE}"
 
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
 
           {
-            echo "## Kirisakura Kernel — ASUS ROG Phone 5/5s"
+            echo "## Kirisakura Kernel — ASUS ROG Phone 5/5s (ANAKIN)"
             echo "Unified Multi-Flavor Release - ${RELEASE_DATE}"
             echo ""
             if [ "${{ inputs.is_prerelease }}" = "true" ]; then
