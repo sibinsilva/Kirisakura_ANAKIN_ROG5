@@ -30,20 +30,16 @@ jobs:
       matrix:
         include:
           - branch: main
-            flavor: Stock
-            zip_suffix: "Stock-2.0.1"
-            desc: "Stock / Vanilla (pure kernel, no root)"
+            flavor: Vanilla
+            zip_suffix: "Vanilla"
+            desc: "Vanilla / Stock (pure kernel, no root)"
           - branch: release/ksu-next
             flavor: KSU-Next
-            zip_suffix: "KSU-Next-v3.4.0-susfs"
-            desc: "KernelSU-Next v3.4.0 (33294) + Legacy SUSFS"
-          - branch: release/sukisu-ultra
-            flavor: SuKiSU-Ultra
-            zip_suffix: "SuKiSU-Ultra-v4.2.0-susfs"
-            desc: "SukiSU-Ultra v4.2.0 + Legacy SUSFS"
+            zip_suffix: "KSU-Next-susfs"
+            desc: "KernelSU-Next v3.4.0 + Legacy SUSFS"
           - branch: release/resukisu
             flavor: ReSukiSU
-            zip_suffix: "ReSukiSU-v4.2.0-rc3-susfs"
+            zip_suffix: "ReSukiSU-susfs"
             desc: "ReSukiSU v4.2.0-rc3 + Legacy SUSFS"
     steps:
       - name: Checkout ${{ matrix.branch }}
