@@ -4138,6 +4138,230 @@ SYSCALL_DEFINE6(futex_time32, u32 __user *, uaddr, int, op, u32, val,
 }
 #endif /* CONFIG_COMPAT_32BIT_TIME */
 
+struct futex_vector {
+	struct futex_waitv w;
+	struct futex_q q;
+};
+
+#define FUTEXV_WAITER_MASK (FUTEX_32 | FUTEX_PRIVATE_FLAG)
+
+static int futex_parse_waitv(struct futex_vector *futexv,
+			     struct futex_waitv __user *uwaitv,
+			     unsigned int nr_futexes)
+{
+	struct futex_waitv aux;
+	unsigned int i;
+
+	for (i = 0; i < nr_futexes; i++) {
+		if (copy_from_user(&aux, &uwaitv[i], sizeof(aux)))
+			return -EFAULT;
+
+		if ((aux.flags & ~FUTEXV_WAITER_MASK) || aux.__reserved)
+			return -EINVAL;
+
+		if (!(aux.flags & FUTEX_32))
+			return -EINVAL;
+
+		futexv[i].w.flags = aux.flags;
+		futexv[i].w.val = aux.val;
+		futexv[i].w.uaddr = aux.uaddr;
+		futexv[i].q = futex_q_init;
+	}
+
+	return 0;
+}
+
+static int unqueue_multiple(struct futex_vector *v, int count)
+{
+	int ret = -1, i;
+
+	for (i = 0; i < count; i++) {
+		if (!unqueue_me(&v[i].q))
+			ret = i;
+	}
+
+	return ret;
+}
+
+static int futex_wait_multiple_setup(struct futex_vector *vs, int count, int *woken)
+{
+	struct futex_hash_bucket *hb;
+	bool retry = false;
+	int ret, i;
+	u32 uval;
+
+retry:
+	for (i = 0; i < count; i++) {
+		u32 __user *uaddr = u64_to_user_ptr(vs[i].w.uaddr);
+
+		if ((vs[i].w.flags & FUTEX_PRIVATE_FLAG) && retry)
+			continue;
+
+		ret = get_futex_key(uaddr,
+				    !(vs[i].w.flags & FUTEX_PRIVATE_FLAG),
+				    &vs[i].q.key, FUTEX_READ);
+
+		if (unlikely(ret)) {
+			int j;
+			for (j = 0; j < i; j++)
+				put_futex_key(&vs[j].q.key);
+			return ret;
+		}
+	}
+
+	set_current_state(TASK_INTERRUPTIBLE);
+
+	for (i = 0; i < count; i++) {
+		u32 __user *uaddr = u64_to_user_ptr(vs[i].w.uaddr);
+		struct futex_q *q = &vs[i].q;
+		u32 val = (u32)vs[i].w.val;
+
+		hb = queue_lock(q);
+		ret = get_futex_value_locked(&uval, uaddr);
+
+		if (!ret && uval == val) {
+			queue_me(q, hb);
+			continue;
+		}
+
+		queue_unlock(hb);
+		__set_current_state(TASK_RUNNING);
+
+		*woken = unqueue_multiple(vs, i);
+		if (*woken >= 0) {
+			int j;
+			for (j = i; j < count; j++)
+				put_futex_key(&vs[j].q.key);
+			return 1;
+		}
+
+		if (ret) {
+			int j;
+			for (j = i; j < count; j++)
+				put_futex_key(&vs[j].q.key);
+
+			if (get_user(uval, uaddr))
+				return -EFAULT;
+
+			retry = true;
+			goto retry;
+		}
+
+		if (uval != val) {
+			int j;
+			for (j = i; j < count; j++)
+				put_futex_key(&vs[j].q.key);
+			return -EWOULDBLOCK;
+		}
+	}
+
+	return 0;
+}
+
+static void futex_sleep_multiple(struct futex_vector *vs, unsigned int count,
+				 struct hrtimer_sleeper *to)
+{
+	if (to && !to->task)
+		return;
+
+	for (; count; count--, vs++) {
+		if (!READ_ONCE(vs->q.lock_ptr))
+			return;
+	}
+
+	freezable_schedule();
+}
+
+static int futex_wait_multiple(struct futex_vector *vs, unsigned int count,
+			       struct hrtimer_sleeper *to)
+{
+	int ret, hint = 0;
+
+	if (to)
+		hrtimer_sleeper_start_expires(to, HRTIMER_MODE_ABS);
+
+	while (1) {
+		ret = futex_wait_multiple_setup(vs, count, &hint);
+		if (ret) {
+			if (ret > 0) {
+				/* A futex was woken during setup */
+				ret = hint;
+			}
+			return ret;
+		}
+
+		futex_sleep_multiple(vs, count, to);
+
+		__set_current_state(TASK_RUNNING);
+
+		ret = unqueue_multiple(vs, count);
+		if (ret >= 0)
+			return ret;
+
+		if (to && !to->task)
+			return -ETIMEDOUT;
+		else if (signal_pending(current))
+			return -ERESTARTSYS;
+		/*
+		 * The final case is a spurious wakeup, for
+		 * which just retry.
+		 */
+	}
+}
+
+SYSCALL_DEFINE5(futex_waitv, struct futex_waitv __user *, waiters,
+		unsigned int, nr_futexes, unsigned int, flags,
+		struct __kernel_timespec __user *, timeout, clockid_t, clockid)
+{
+	struct hrtimer_sleeper to;
+	struct futex_vector *futexv;
+	struct timespec64 ts;
+	ktime_t time;
+	int ret;
+
+	/* This syscall supports no flags for now */
+	if (flags)
+		return -EINVAL;
+
+	if (!nr_futexes || nr_futexes > FUTEX_WAITV_MAX || !waiters)
+		return -EINVAL;
+
+	if (timeout) {
+		int flag_clkid = 0;
+
+		if (clockid == CLOCK_REALTIME) {
+			flag_clkid = FLAGS_CLOCKRT;
+		} else if (clockid != CLOCK_MONOTONIC) {
+			return -EINVAL;
+		}
+
+		if (get_timespec64(&ts, timeout))
+			return -EFAULT;
+
+		if (!timespec64_valid(&ts))
+			return -EINVAL;
+
+		time = timespec64_to_ktime(ts);
+		futex_setup_timer(&time, &to, flag_clkid, 0);
+	}
+
+	futexv = kcalloc(nr_futexes, sizeof(*futexv), GFP_KERNEL);
+	if (!futexv)
+		return -ENOMEM;
+
+	ret = futex_parse_waitv(futexv, waiters, nr_futexes);
+	if (!ret)
+		ret = futex_wait_multiple(futexv, nr_futexes, timeout ? &to : NULL);
+
+	if (timeout) {
+		hrtimer_cancel(&to.timer);
+		destroy_hrtimer_on_stack(&to.timer);
+	}
+
+	kfree(futexv);
+	return ret;
+}
+
 static void __init futex_detect_cmpxchg(void)
 {
 #ifndef CONFIG_HAVE_FUTEX_CMPXCHG
