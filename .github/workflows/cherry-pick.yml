@@ -8,7 +8,9 @@ on:
         required: true
         type: choice
         options:
+          - main
           - release/ksu-next
+          - release/resukisu
           - release/sukisu-ultra
           - release/lineage-20
           - release/derpfest-13
