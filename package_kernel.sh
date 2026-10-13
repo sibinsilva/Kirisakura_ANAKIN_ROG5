@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ZIP_NAME="Kirisakura-ANAKIN-ROG5-KSU-Next-v3.4.0-legacy-susfs.zip"
+ZIP_NAME="Kirisakura-ANAKIN-ROG5-KSU-Next-v3.4.1-legacy-susfs.zip"
 
 echo
 echo "========================================="
@@ -23,6 +23,8 @@ echo "✓ Image.gz found"
 echo "→ Copying fresh kernel image and modules..."
 cp "$SCRIPT_DIR/out_cfi/arch/arm64/boot/Image.gz" \
    "$SCRIPT_DIR/AnyKernel3/Image.gz"
+
+mkdir -p "$SCRIPT_DIR/AnyKernel3/modules/vendor/lib/modules"
 
 cp "$SCRIPT_DIR/out_cfi/drivers/input/misc/sx932x_2nd.ko" \
    "$SCRIPT_DIR/AnyKernel3/modules/vendor/lib/modules/sx932x_2nd.ko"
