@@ -23,6 +23,11 @@ elif [ -d "$PWD/toolchains/clang/bin" ]; then
     CLANG_PATH="$PWD/toolchains/clang/bin"
     BASE_PATH_GCC="$PWD/toolchains/gcc-arm64"
     BASE_PATH_GCC_32="$PWD/toolchains/gcc-arm32"
+elif [ -d "/home/sibindev9746_gmail_com/Android_Build" ]; then
+    BASE_PATH=/home/sibindev9746_gmail_com/Android_Build/Clang_Google/linux-x86/clang-r450784e
+    BASE_PATH_GCC=/home/sibindev9746_gmail_com/Android_Build/GCC_Google_Arm64
+    BASE_PATH_GCC_32=/home/sibindev9746_gmail_com/Android_Build/GCC_Google_Arm32
+    CLANG_PATH=$BASE_PATH/clang-r450784e/bin
 else
     BASE_PATH=/home/sibinsilva1993_gmail_com/Android_Build/Clang_Google/linux-x86/clang-r450784e
     BASE_PATH_GCC=/home/sibinsilva1993_gmail_com/Android_Build/GCC_Google_Arm64
