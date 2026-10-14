@@ -173,12 +173,12 @@ jobs:
           RELEASE_DATE=$(date -u +'%Y-%m-%d')
 
           # Determine artifact names & release tags
-          ZIP_NAME="Kirisakura-ROG5-ReSukiSU-v4.2.0-rc3-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+          ZIP_NAME="Kirisakura-ROG5-ReSukiSU-v4.2.0-rc3-susfs-v2.3.0-${BUILD_DATE}-${SHORT_SHA}.zip"
           RELEASE_TAG="${{ inputs.release_tag }}"
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v4.2.0-rc3-susfs-${BUILD_DATE}-${SHORT_SHA}"
+            RELEASE_TAG="v4.2.0-rc3-susfs-v2.3.0-${BUILD_DATE}-${SHORT_SHA}"
           fi
-          RELEASE_NAME="Kirisakura ROG 5 (ReSukiSU) — ${RELEASE_DATE} (${SHORT_SHA})"
+          RELEASE_NAME="Kirisakura ROG 5 (ReSukiSU + SuSFS v2.3.0) — ${RELEASE_DATE} (${SHORT_SHA})"
 
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
@@ -224,7 +224,7 @@ jobs:
             echo ""
             echo "### 🛠 Toolchains & Features"
             echo "- **Compiler:** Clang \`r450784e\` + GCC 4.9 (\`aarch64\` / \`arm\`)"
-            echo "- **ReSukiSU:** v4.2.0-rc3 + Legacy SUSFS"
+            echo "- **ReSukiSU:** v4.2.0-rc3 + SuSFS v2.3.0"
             echo "- **WireGuard:** \`1.0.20220627\`"
             echo ""
             echo "### 🔒 Checksum (SHA-256)"

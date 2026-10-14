@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ZIP_NAME="Kirisakura-ANAKIN-ROG5-ReSukiSU-v4.2.0-rc3-legacy-susfs.zip"
+ZIP_NAME="Kirisakura-ANAKIN-ROG5-ReSukiSU-v4.2.0-rc3-susfs-v2.3.0.zip"
 
 echo
 echo "========================================="
@@ -42,16 +42,12 @@ zip -r9 "$SCRIPT_DIR/$ZIP_NAME" . \
 cd "$SCRIPT_DIR"
 echo "✓ Created $ZIP_NAME ($(du -sh $ZIP_NAME | cut -f1))"
 
-# ── 4. Upload to Litterbox (72 hours) ────────────────────────────────────────
-echo "→ Uploading to Litterbox..."
-UPLOAD_URL=$(curl -s \
-    -F "reqtype=fileupload" \
-    -F "time=72h" \
-    -F "fileToUpload=@$SCRIPT_DIR/$ZIP_NAME" \
-    https://litterbox.catbox.moe/resources/internals/api.php)
+# ── 4. Upload to temp.sh ──────────────────────────────────────────────────────
+echo "→ Uploading to temp.sh..."
+UPLOAD_URL=$(curl -s -F "file=@$SCRIPT_DIR/$ZIP_NAME" https://temp.sh/upload)
 
 if [[ "$UPLOAD_URL" != https://* ]]; then
-    echo "→ Litterbox unavailable, uploading to tmpfiles.org..."
+    echo "→ temp.sh unavailable, uploading to tmpfiles.org..."
     UPLOAD_RES=$(curl -s -F "file=@$SCRIPT_DIR/$ZIP_NAME" https://tmpfiles.org/api/v1/upload)
     RAW_URL=$(echo "$UPLOAD_RES" | grep -o 'https://tmpfiles.org/[a-zA-Z0-9/]*/[^"]*')
     if [ -n "$RAW_URL" ]; then
