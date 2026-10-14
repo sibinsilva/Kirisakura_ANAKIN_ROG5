@@ -49,6 +49,7 @@
 #define VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT 0x80000000 /* used for mounts that are unshared by ksu process */
 #define DEFAULT_KSU_MNT_ID 2000000000 /* used for mounts created or single cloned by ksu process */
 #define DEFAULT_KSU_MNT_GROUP_ID 200000 /* used by mount->mnt_group_id */
+#define DEFAULT_KSU_MNT_MINOR_DEV (1 << 12) /* should be way enough, here minor(dev) begins with 4097 */
 
 #ifndef FUSE_SUPER_MAGIC
 #define FUSE_SUPER_MAGIC 0x65735546
@@ -72,6 +73,9 @@
 #define ND_STATE_OPEN_LAST 64
 #define ND_FLAGS_LOOKUP_LAST		0x2000000
  
+#define STATX_SUS_KSTAT 0x10000000U
+#define STATX_SUS_KSTAT_FUSE 0x20000000U
+
 #define MAGIC_MOUNT_WORKDIR "/debug_ramdisk/workdir"
 
 
@@ -138,12 +142,20 @@ struct fsnotify_mark *vfsmount_mark, u32 mask, void *data,    \
 int data_type, susfs_fname_t file_name, u32 cookie)
 #endif
 
+static inline bool susfs_is_current_app_uid(void) {
+	return ((current_uid().val % 100000) >= 10000);
+}
+
 static inline bool susfs_is_current_proc_umounted(void) {
 	return (likely(test_thread_flag(TIF_PROC_UMOUNTED)));
 }
 
 static inline void susfs_set_current_proc_umounted(void) {
 	set_thread_flag(TIF_PROC_UMOUNTED);
+}
+
+static inline void susfs_clear_current_proc_umounted(void) {
+	clear_thread_flag(TIF_PROC_UMOUNTED);
 }
 
 static inline bool susfs_is_current_proc_umounted_app(void) {
