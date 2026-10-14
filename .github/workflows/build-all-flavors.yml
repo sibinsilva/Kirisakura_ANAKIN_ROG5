@@ -36,11 +36,11 @@ jobs:
           - branch: release/ksu-next
             flavor: KSU-Next
             zip_suffix: "KSU-Next-susfs"
-            desc: "KernelSU-Next v3.4.0 + Legacy SUSFS"
+            desc: "KernelSU-Next v3.4.2 + SuSFS v2.3.0"
           - branch: release/resukisu
             flavor: ReSukiSU
             zip_suffix: "ReSukiSU-susfs"
-            desc: "ReSukiSU v4.2.0-rc3 + Legacy SUSFS"
+            desc: "ReSukiSU v4.2.0-rc3 + SuSFS v2.3.0"
     steps:
       - name: Checkout ${{ matrix.branch }}
         uses: actions/checkout@v4
@@ -262,7 +262,7 @@ jobs:
             echo "### Commits"
             for info in artifacts/*.info; do
               source "$info"
-              echo "- **$FLAVOR** (\`$BRANCH\`): [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - $COMMIT_SUBJECT"
+              echo "- **$FLAVOR** (\`$BRANCH\`) — *$DESC*: [\`$SHORT_SHA\`](https://github.com/${{ github.repository }}/commit/$FULL_SHA) - $COMMIT_SUBJECT"
             done
             echo ""
             echo "### SHA-256 Checksums"
