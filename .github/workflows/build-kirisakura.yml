@@ -156,7 +156,7 @@ jobs:
           # Determine root flavor
           if [ -d "KernelSU-Next" ]; then
             FLAVOR_TAG="KSU-Next"
-            KSU_DESC="KernelSU-Next: v3.4.1 (\`33333\`) + Legacy SUSFS"
+            KSU_DESC="KernelSU-Next: v3.4.2 (\`33355\`) + Legacy SUSFS"
           elif [ -d "KernelSU" ]; then
             FLAVOR_TAG="SuKiSU-Ultra"
             KSU_DESC="SukiSU-Ultra: v4.1.3 + Legacy SUSFS"
@@ -168,14 +168,14 @@ jobs:
           # Determine release vs pre-release based on branch
           if [[ "$BRANCH_NAME" == release/* ]]; then
             IS_PRERELEASE="false"
-            DEFAULT_TAG="v3.4.1-susfs-${BUILD_DATE}-${SHORT_SHA}"
+            DEFAULT_TAG="v3.4.2-susfs-${BUILD_DATE}-${SHORT_SHA}"
             RELEASE_NAME="Kirisakura ROG 5 (${FLAVOR_TAG}) — ${RELEASE_DATE} (${SHORT_SHA})"
-            ZIP_NAME="Kirisakura-ROG5-${FLAVOR_TAG}-v3.4.1-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
+            ZIP_NAME="Kirisakura-ROG5-${FLAVOR_TAG}-v3.4.2-susfs-${BUILD_DATE}-${SHORT_SHA}.zip"
           else
             IS_PRERELEASE="true"
-            DEFAULT_TAG="v3.4.1-susfs-pre-${BUILD_DATE}-${SHORT_SHA}"
+            DEFAULT_TAG="v3.4.2-susfs-pre-${BUILD_DATE}-${SHORT_SHA}"
             RELEASE_NAME="Kirisakura ROG 5 (${FLAVOR_TAG}) Pre-Release — ${RELEASE_DATE} (${SHORT_SHA})"
-            ZIP_NAME="Kirisakura-ROG5-${FLAVOR_TAG}-v3.4.1-susfs-pre-${BUILD_DATE}-${SHORT_SHA}.zip"
+            ZIP_NAME="Kirisakura-ROG5-${FLAVOR_TAG}-v3.4.2-susfs-pre-${BUILD_DATE}-${SHORT_SHA}.zip"
           fi
 
           RELEASE_TAG="${{ inputs.release_tag }}"
