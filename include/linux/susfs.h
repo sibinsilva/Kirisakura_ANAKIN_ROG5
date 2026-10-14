@@ -252,4 +252,11 @@ void susfs_sus_kstat_spoof_proc_fd_seq_show(int *out_target_mnt_id, unsigned lon
 int susfs_open_redirect_spoof_show_map_vma_srcu(struct inode *inode, unsigned long *out_ino, dev_t *out_dev, char **out_spoofed_name);
 #endif
 
+/* Compatibility stubs for legacy KSU-Next callers */
+void susfs_run_sus_path_loop(uid_t uid);
+void susfs_try_umount(uid_t target_uid);
+void susfs_reorder_mnt_id(void);
+static inline void susfs_set_i_state_on_external_dir(void __user *arg) {}
+static inline void susfs_add_try_umount(void __user *arg) {}
+
 #endif
