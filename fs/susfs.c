@@ -134,7 +134,7 @@ out_copy_to_user:
 	SUSFS_LOGI("CMD_SUSFS_ADD_SUS_PATH_LOOP -> ret: %d\n", info.err);
 }
 
-static void susfs_run_sus_path_loop(void) {
+static void susfs_run_sus_path_loop_internal(void) {
 	struct st_susfs_sus_path_list *cursor = NULL;
 	struct path path;
 	struct inode *inode;
@@ -1544,7 +1544,7 @@ static void susfs_run_extra_works(struct work_struct *work) {
 	if (!ksu_cred)
 		return;
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	susfs_run_sus_path_loop();
+	susfs_run_sus_path_loop_internal();
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 }
 
@@ -1555,6 +1555,11 @@ void susfs_init(void) {\
 	SUSFS_LOGI("susfs is initialized! version: " SUSFS_VERSION " \n");
 }
 
+void susfs_run_sus_path_loop(uid_t uid) {}
+void susfs_try_umount(uid_t target_uid) {}
+void susfs_reorder_mnt_id(void) {}
+
 /* No module exit is needed becuase it should never be a loadable kernel module */
 //void __init susfs_exit(void)
+
 
