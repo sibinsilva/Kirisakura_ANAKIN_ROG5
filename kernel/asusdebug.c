@@ -1751,11 +1751,12 @@ static int __init proc_asusdebug_init(void)
 	proc_create("asusdebug-switch", S_IRWXUGO, NULL, &turnon_asusdebug_proc_ops);
 	proc_create("last_logcat", S_IWUGO, NULL, &last_logcat_proc_ops); /* ASUS_BSP Paul +++ */
 	/*
-	 * Map as Normal non-cacheable (like pstore/ramoops) rather than Device
-	 * memory: the save/dump paths use strncmp/sprintf/ksys_write directly on
-	 * this buffer, and unaligned or paired accesses to Device memory fault.
+	 * Must stay a Device mapping: with ioremap_wc() (Normal-NC) writes to
+	 * this region never reach memory and the device crashes into ramdump
+	 * ~15s into boot, presumably because Normal memory allows speculative
+	 * accesses into parts of the range the secure side protects.
 	 */
-	PRINTK_BUFFER_VA = ioremap_wc(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
+	PRINTK_BUFFER_VA = ioremap(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
 	if (PRINTK_BUFFER_VA) {
 		last_kmsg_buf = kvmalloc(PRINTK_BUFFER_SLOT_SIZE + 1, GFP_KERNEL);
 		if (last_kmsg_buf) {
