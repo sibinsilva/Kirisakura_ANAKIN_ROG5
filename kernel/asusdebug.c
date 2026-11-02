@@ -286,6 +286,8 @@ void print_all_thread_info(void)
 	struct thread_info *pti;
 	struct rtc_time tm;
 
+	if (!PRINTK_BUFFER_VA)
+		return;
 	asus_rtc_read_time(&tm);
 
 	g_phonehang_log = (char *)PHONE_HANG_LOG_BUFFER;
@@ -532,6 +534,8 @@ void save_all_thread_info(void)
 
 	struct rtc_time tm;
 
+	if (!PRINTK_BUFFER_VA)
+		return;
 	asus_rtc_read_time(&tm);
 	g_phonehang_log = (char *)PHONE_HANG_LOG_BUFFER;
 	g_iPtr = 0;
@@ -731,6 +735,8 @@ void delta_all_thread_info(void)
 		printk("kernel is shutdowning\n");
 		return;
 	}
+	if (!PRINTK_BUFFER_VA)
+		return;
 	asus_rtc_read_time(&tm);
 	g_phonehang_log = (char *)PHONE_HANG_LOG_BUFFER;
 	g_iPtr = 0;
@@ -779,6 +785,9 @@ void save_phone_hang_log(int delta)
 	int file_handle;
 	int ret =  0;
 
+	if (!PRINTK_BUFFER_VA)
+		return;
+
 	//---------------saving phone hang log if any -------------------------------
 	g_phonehang_log = (char *)PHONE_HANG_LOG_BUFFER;
 	printk("save_phone_hang_log PRINTK_BUFFER=%p, PHONE_HANG_LOG_BUFFER=%p\n", PRINTK_BUFFER_VA, PHONE_HANG_LOG_BUFFER);
@@ -810,6 +819,9 @@ void save_last_logcat_kmsg(){
 	char *last_logcat_buffer = (char *)LOGCAT_BUFFER;
 	char *last_shutdown_log = (char *)PRINTK_BUFFER_VA;
 	int fd_kmsg, fd_logcat;
+
+	if (!PRINTK_BUFFER_VA)
+		return;
 	initKernelEnv();
 	
 	fd_kmsg = ksys_open("/asdf/last_kmsg", O_CREAT | O_RDWR | O_SYNC,S_IWUGO | S_IRUGO);
@@ -851,6 +863,8 @@ void save_last_shutdown_log(char *filename)
 	//ulong printk_buffer_index;
 	/* ASUS_BSP Paul --- */
 
+	if (!PRINTK_BUFFER_VA)
+		return;
 	t = cpu_clock(0);
 	nanosec_rem = do_div(t, 1000000000);
 	last_shutdown_log = (char *)PRINTK_BUFFER_VA;
@@ -924,6 +938,8 @@ void get_last_shutdown_log(void)
 {
 	ulong *printk_buffer_slot2_addr;
 
+	if (!PRINTK_BUFFER_VA)
+		return;
 	printk_buffer_slot2_addr = (ulong *)PRINTK_BUFFER_SLOT2;
 	printk("get_last_shutdown_log: printk_buffer_slot2=%p, value=0x%lx\n", printk_buffer_slot2_addr, *printk_buffer_slot2_addr);
 	if (*printk_buffer_slot2_addr == (ulong)PRINTK_BUFFER_MAGIC)
@@ -1507,6 +1523,8 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 #endif
 		ulong *printk_buffer_slot2_addr;
 
+		if (!PRINTK_BUFFER_VA)
+			return count;
 		printk_buffer_slot2_addr = (ulong *)PRINTK_BUFFER_SLOT2;
 		printk("[ASDF] printk_buffer_slot2_addr=%p, value=0x%lx\n", printk_buffer_slot2_addr, *printk_buffer_slot2_addr);
 
@@ -1626,19 +1644,25 @@ static struct file_operations turnon_asusdebug_proc_ops = {
 };
 
 /* ASUS_BSP Paul +++ */
+static DEFINE_MUTEX(last_logcat_lock);
+
 static ssize_t last_logcat_proc_write(struct file *filp, const char __user *buff, size_t len, loff_t *off)
 {
-	char messages[4096];
+	char *messages;
 	char *last_logcat_buffer;
 
-	memset(messages, 0, sizeof(messages));
+	if (!PRINTK_BUFFER_VA)
+		return -ENODEV;
 
 	if (len > 4096)
 		len = 4096;
-	if (copy_from_user(messages, buff, len))
-		return -EFAULT;
+	messages = memdup_user(buff, len);
+	if (IS_ERR(messages))
+		return PTR_ERR(messages);
 
 	last_logcat_buffer = (char *)LOGCAT_BUFFER;
+
+	mutex_lock(&last_logcat_lock);
 
 	if (logcat_buffer_index + len >= LOGCAT_BUFFER_SIZE) {
 		ulong part1 = LOGCAT_BUFFER_SIZE - logcat_buffer_index;
@@ -1650,7 +1674,9 @@ static ssize_t last_logcat_proc_write(struct file *filp, const char __user *buff
 		memcpy_nc(last_logcat_buffer + logcat_buffer_index, messages, len);
 		logcat_buffer_index += len;
 	}
+	mutex_unlock(&last_logcat_lock);
 
+	kfree(messages);
 	return len;
 }
 
@@ -1694,6 +1720,9 @@ static void  register_minidump_log_buf(void)
 {
 	struct md_region md_entry;
 
+	if (!PRINTK_BUFFER_VA)
+		return;
+
 	/*Register logbuf to minidump, first idx would be from bss section */
 	strlcpy(md_entry.name, "KLOGDMSG", sizeof(md_entry.name));
 	md_entry.virt_addr = (uintptr_t) (PRINTK_BUFFER_VA);
@@ -1721,7 +1750,12 @@ static int __init proc_asusdebug_init(void)
 	proc_create("asusevtlog-switch", S_IRWXUGO, NULL, &proc_evtlogswitch_operations);
 	proc_create("asusdebug-switch", S_IRWXUGO, NULL, &turnon_asusdebug_proc_ops);
 	proc_create("last_logcat", S_IWUGO, NULL, &last_logcat_proc_ops); /* ASUS_BSP Paul +++ */
-	PRINTK_BUFFER_VA = ioremap(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
+	/*
+	 * Map as Normal non-cacheable (like pstore/ramoops) rather than Device
+	 * memory: the save/dump paths use strncmp/sprintf/ksys_write directly on
+	 * this buffer, and unaligned or paired accesses to Device memory fault.
+	 */
+	PRINTK_BUFFER_VA = ioremap_wc(PRINTK_BUFFER_PA, PRINTK_BUFFER_SIZE);
 	if (PRINTK_BUFFER_VA) {
 		last_kmsg_buf = kvmalloc(PRINTK_BUFFER_SLOT_SIZE + 1, GFP_KERNEL);
 		if (last_kmsg_buf) {
