@@ -110,7 +110,6 @@ struct umount_tw {
 	struct callback_head cb;
 };
 
-#if !defined(CONFIG_KSU_SUSFS) || !defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
 static void umount_tw_func(struct callback_head *cb)
 {
 	struct umount_tw *tw = container_of(cb, struct umount_tw, cb);
@@ -129,6 +128,32 @@ static void umount_tw_func(struct callback_head *cb)
 	kfree(tw);
 }
 
+#if defined(CONFIG_KSU_SUSFS) && defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
+/*
+ * Called from ksu_handle_setresuid() once it has decided that the zygote
+ * child must be umounted, so only the global switches are checked here.
+ * The umount itself runs from task_work with ksu_cred, as in
+ * ksu_handle_umount().
+ */
+void susfs_try_umount(uid_t target_uid)
+{
+	struct umount_tw *tw;
+
+	if (!ksu_module_mounted || !ksu_kernel_umount_enabled || !ksu_cred)
+		return;
+
+	tw = kzalloc(sizeof(*tw), GFP_ATOMIC);
+	if (!tw)
+		return;
+
+	tw->cb.func = umount_tw_func;
+
+	if (task_work_add(current, &tw->cb, TWA_RESUME)) {
+		kfree(tw);
+		pr_warn("susfs_try_umount: add task_work failed\n");
+	}
+}
+#else
 int ksu_handle_umount(uid_t old_uid, uid_t new_uid)
 {
 	struct umount_tw *tw;
