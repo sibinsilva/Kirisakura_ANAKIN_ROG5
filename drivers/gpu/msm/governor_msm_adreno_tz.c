@@ -24,10 +24,10 @@ static DEFINE_SPINLOCK(tz_lock);
 static DEFINE_SPINLOCK(sample_lock);
 static DEFINE_SPINLOCK(suspend_lock);
 /*
- * FLOOR is 2.5msec to capture re-draws for high-refresh rate
- * (120Hz/144Hz/165Hz) content on ROG Phone.
+ * FLOOR is 5msec to capture up to 3 re-draws
+ * per frame for 60fps content.
  */
-#define FLOOR		        2500
+#define FLOOR		        5000
 /*
  * MIN_BUSY is 1 msec for the sample to be sent
  */
@@ -35,10 +35,10 @@ static DEFINE_SPINLOCK(suspend_lock);
 #define MAX_TZ_VERSION		0
 
 /*
- * CEILING is 25msec (~3-4 frames at 144Hz), allowing fast ramp
- * to peak frequency during intense 3D scenes.
+ * CEILING is 50msec, larger than any standard
+ * frame length, but less than the idle timer.
  */
-#define CEILING			25000
+#define CEILING			50000
 #define TZ_RESET_ID		0x3
 #define TZ_UPDATE_ID		0x4
 #define TZ_INIT_ID		0x6
