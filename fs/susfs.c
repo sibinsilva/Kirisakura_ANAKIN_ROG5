@@ -1539,7 +1539,8 @@ void susfs_start_sdcard_monitor_fn(void) {
 
 // - defer extra susfs works to workqueue after do_umount in ksu_handle_setresuid()
 //   so that we do not block there and reduce the risk of time side channel as much as possible.
-struct work_struct susfs_extra_works;
+static void susfs_run_extra_works(struct work_struct *work);
+static DECLARE_WORK(susfs_extra_works, susfs_run_extra_works);
 static void susfs_run_extra_works(struct work_struct *work) {
 	if (!ksu_cred)
 		return;
@@ -1550,13 +1551,15 @@ static void susfs_run_extra_works(struct work_struct *work) {
 
 /* susfs_init */
 void susfs_init(void) {\
-	SUSFS_LOGI("Initializing susfs_extra_works\n");
-	INIT_WORK(&susfs_extra_works, susfs_run_extra_works);
 	SUSFS_LOGI("susfs is initialized! version: " SUSFS_VERSION " \n");
 }
 
-void susfs_run_sus_path_loop(uid_t uid) {}
-void susfs_try_umount(uid_t target_uid) {}
+/* Re-flag sus paths off the setresuid() path, see susfs_run_extra_works() */
+void susfs_run_sus_path_loop(uid_t uid) {
+	schedule_work(&susfs_extra_works);
+}
+
+/* mnt_id reordering is not ported to 5.4; sus mounts keep DEFAULT_KSU_MNT_ID */
 void susfs_reorder_mnt_id(void) {}
 
 /* No module exit is needed becuase it should never be a loadable kernel module */
