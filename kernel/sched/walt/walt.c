@@ -3,6 +3,7 @@
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 #include <linux/syscore_ops.h>
+#include <linux/ratelimit.h>
 #include <linux/cpufreq.h>
 #include <linux/list_sort.h>
 #include <linux/jiffies.h>
@@ -302,6 +303,24 @@ static inline void walt_dump(void)
 	SCHED_PRINT(min_max_possible_capacity);
 	printk_deferred("============ WALT RQ DUMP END ==============\n");
 }
+
+/*
+ * A WALT busy-time counter being smaller than the contribution about to be
+ * subtracted from it means the accounting has drifted. That used to be a
+ * SCHED_BUG_ON(), which panics the whole device (rq locks are held, so it
+ * ends in a watchdog bite). Log it, rate-limited, and clamp the counter to
+ * zero instead: the cost is one inaccurate load window on one CPU.
+ */
+static atomic_t walt_underflow_count = ATOMIC_INIT(0);
+#define walt_underflow_printk(fmt, ...)					\
+do {									\
+	static DEFINE_RATELIMIT_STATE(_walt_uf_rs, 5 * HZ, 5);		\
+	atomic_inc(&walt_underflow_count);				\
+	if (__ratelimit(&_walt_uf_rs))					\
+		printk_deferred(KERN_WARNING fmt " [clamped, total=%d]\n",	\
+				##__VA_ARGS__,				\
+				atomic_read(&walt_underflow_count));	\
+} while (0)
 
 static int in_sched_bug;
 #define SCHED_BUG_ON(condition)				\
@@ -727,10 +746,26 @@ static inline void account_load_subtractions(struct rq *rq)
 		ls[i].new_subs = 0;
 	}
 
-	SCHED_BUG_ON((s64)rq->wrq.prev_runnable_sum < 0);
-	SCHED_BUG_ON((s64)rq->wrq.curr_runnable_sum < 0);
-	SCHED_BUG_ON((s64)rq->wrq.nt_prev_runnable_sum < 0);
-	SCHED_BUG_ON((s64)rq->wrq.nt_curr_runnable_sum < 0);
+	if (unlikely((s64)rq->wrq.prev_runnable_sum < 0)) {
+		walt_underflow_printk("WALT-BUG CPU%d prev_runnable_sum=%lld is negative",
+				cpu_of(rq), (s64)rq->wrq.prev_runnable_sum);
+		rq->wrq.prev_runnable_sum = 0;
+	}
+	if (unlikely((s64)rq->wrq.curr_runnable_sum < 0)) {
+		walt_underflow_printk("WALT-BUG CPU%d curr_runnable_sum=%lld is negative",
+				cpu_of(rq), (s64)rq->wrq.curr_runnable_sum);
+		rq->wrq.curr_runnable_sum = 0;
+	}
+	if (unlikely((s64)rq->wrq.nt_prev_runnable_sum < 0)) {
+		walt_underflow_printk("WALT-BUG CPU%d nt_prev_runnable_sum=%lld is negative",
+				cpu_of(rq), (s64)rq->wrq.nt_prev_runnable_sum);
+		rq->wrq.nt_prev_runnable_sum = 0;
+	}
+	if (unlikely((s64)rq->wrq.nt_curr_runnable_sum < 0)) {
+		walt_underflow_printk("WALT-BUG CPU%d nt_curr_runnable_sum=%lld is negative",
+				cpu_of(rq), (s64)rq->wrq.nt_curr_runnable_sum);
+		rq->wrq.nt_curr_runnable_sum = 0;
+	}
 }
 
 static inline void create_subtraction_entry(struct rq *rq, u64 ws, int index)
@@ -834,22 +869,22 @@ static inline void inter_cluster_migration_fixup
 	dest_rq->wrq.prev_runnable_sum += p->wts.prev_window;
 
 	if (src_rq->wrq.curr_runnable_sum < p->wts.curr_window_cpu[task_cpu]) {
-		printk_deferred("WALT-BUG pid=%u CPU%d -> CPU%d src_crs=%llu is lesser than task_contrib=%llu",
+		walt_underflow_printk("WALT-BUG pid=%u CPU%d -> CPU%d src_crs=%llu is lesser than task_contrib=%llu",
 				p->pid, src_rq->cpu, dest_rq->cpu,
 				src_rq->wrq.curr_runnable_sum,
 				p->wts.curr_window_cpu[task_cpu]);
-		walt_task_dump(p);
-		SCHED_BUG_ON(1);
+		/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+		src_rq->wrq.curr_runnable_sum = p->wts.curr_window_cpu[task_cpu];
 	}
 	src_rq->wrq.curr_runnable_sum -=  p->wts.curr_window_cpu[task_cpu];
 
 	if (src_rq->wrq.prev_runnable_sum < p->wts.prev_window_cpu[task_cpu]) {
-		printk_deferred("WALT-BUG pid=%u CPU%d -> CPU%d src_prs=%llu is lesser than task_contrib=%llu",
+		walt_underflow_printk("WALT-BUG pid=%u CPU%d -> CPU%d src_prs=%llu is lesser than task_contrib=%llu",
 				p->pid, src_rq->cpu, dest_rq->cpu,
 				src_rq->wrq.prev_runnable_sum,
 				p->wts.prev_window_cpu[task_cpu]);
-		walt_task_dump(p);
-		SCHED_BUG_ON(1);
+		/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+		src_rq->wrq.prev_runnable_sum = p->wts.prev_window_cpu[task_cpu];
 	}
 	src_rq->wrq.prev_runnable_sum -=  p->wts.prev_window_cpu[task_cpu];
 
@@ -857,26 +892,24 @@ static inline void inter_cluster_migration_fixup
 		dest_rq->wrq.nt_curr_runnable_sum += p->wts.curr_window;
 		dest_rq->wrq.nt_prev_runnable_sum += p->wts.prev_window;
 
-		if (src_rq->wrq.nt_curr_runnable_sum <
-				p->wts.curr_window_cpu[task_cpu]) {
-			printk_deferred("WALT-BUG pid=%u CPU%d -> CPU%d src_nt_crs=%llu is lesser than task_contrib=%llu",
+		if (src_rq->wrq.nt_curr_runnable_sum < p->wts.curr_window_cpu[task_cpu]) {
+			walt_underflow_printk("WALT-BUG pid=%u CPU%d -> CPU%d src_nt_crs=%llu is lesser than task_contrib=%llu",
 					p->pid, src_rq->cpu, dest_rq->cpu,
 					src_rq->wrq.nt_curr_runnable_sum,
 					p->wts.curr_window_cpu[task_cpu]);
-			walt_task_dump(p);
-			SCHED_BUG_ON(1);
+			/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+			src_rq->wrq.nt_curr_runnable_sum = p->wts.curr_window_cpu[task_cpu];
 		}
 		src_rq->wrq.nt_curr_runnable_sum -=
 				p->wts.curr_window_cpu[task_cpu];
 
-		if (src_rq->wrq.nt_prev_runnable_sum <
-				p->wts.prev_window_cpu[task_cpu]) {
-			printk_deferred("WALT-BUG pid=%u CPU%d -> CPU%d src_nt_prs=%llu is lesser than task_contrib=%llu",
+		if (src_rq->wrq.nt_prev_runnable_sum < p->wts.prev_window_cpu[task_cpu]) {
+			walt_underflow_printk("WALT-BUG pid=%u CPU%d -> CPU%d src_nt_prs=%llu is lesser than task_contrib=%llu",
 					p->pid, src_rq->cpu, dest_rq->cpu,
 					src_rq->wrq.nt_prev_runnable_sum,
 					p->wts.prev_window_cpu[task_cpu]);
-			walt_task_dump(p);
-			SCHED_BUG_ON(1);
+			/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+			src_rq->wrq.nt_prev_runnable_sum = p->wts.prev_window_cpu[task_cpu];
 		}
 		src_rq->wrq.nt_prev_runnable_sum -=
 				p->wts.prev_window_cpu[task_cpu];
@@ -3256,44 +3289,42 @@ static void transfer_busy_time(struct rq *rq,
 		dst_nt_prev_runnable_sum = &cpu_time->nt_prev_runnable_sum;
 
 		if (*src_curr_runnable_sum < p->wts.curr_window_cpu[cpu]) {
-			printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_crs=%llu is lesser than task_contrib=%llu",
+			walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_crs=%llu is lesser than task_contrib=%llu",
 					p->pid, cpu, event, *src_curr_runnable_sum,
 					p->wts.curr_window_cpu[cpu]);
-			walt_task_dump(p);
-			SCHED_BUG_ON(1);
+			/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+			*src_curr_runnable_sum = p->wts.curr_window_cpu[cpu];
 		}
 		*src_curr_runnable_sum -= p->wts.curr_window_cpu[cpu];
 
 		if (*src_prev_runnable_sum < p->wts.prev_window_cpu[cpu]) {
-			printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_prs=%llu is lesser than task_contrib=%llu",
+			walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_prs=%llu is lesser than task_contrib=%llu",
 					p->pid, cpu, event, *src_prev_runnable_sum,
 					p->wts.prev_window_cpu[cpu]);
-			walt_task_dump(p);
-			SCHED_BUG_ON(1);
+			/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+			*src_prev_runnable_sum = p->wts.prev_window_cpu[cpu];
 		}
 		*src_prev_runnable_sum -= p->wts.prev_window_cpu[cpu];
 
 		if (new_task) {
-			if (*src_nt_curr_runnable_sum <
-					p->wts.curr_window_cpu[cpu]) {
-				printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_nt_crs=%llu is lesser than task_contrib=%llu",
+			if (*src_nt_curr_runnable_sum < p->wts.curr_window_cpu[cpu]) {
+				walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_nt_crs=%llu is lesser than task_contrib=%llu",
 						p->pid, cpu, event,
 						*src_nt_curr_runnable_sum,
 						p->wts.curr_window_cpu[cpu]);
-				walt_task_dump(p);
-				SCHED_BUG_ON(1);
+				/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+				*src_nt_curr_runnable_sum = p->wts.curr_window_cpu[cpu];
 			}
 			*src_nt_curr_runnable_sum -=
 					p->wts.curr_window_cpu[cpu];
 
-			if (*src_nt_prev_runnable_sum <
-					p->wts.prev_window_cpu[cpu]) {
-				printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_nt_prs=%llu is lesser than task_contrib=%llu",
+			if (*src_nt_prev_runnable_sum < p->wts.prev_window_cpu[cpu]) {
+				walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_nt_prs=%llu is lesser than task_contrib=%llu",
 						p->pid, cpu, event,
 						*src_nt_prev_runnable_sum,
 						p->wts.prev_window_cpu[cpu]);
-				walt_task_dump(p);
-				SCHED_BUG_ON(1);
+				/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+				*src_nt_prev_runnable_sum = p->wts.prev_window_cpu[cpu];
 			}
 			*src_nt_prev_runnable_sum -=
 					p->wts.prev_window_cpu[cpu];
@@ -3316,41 +3347,41 @@ static void transfer_busy_time(struct rq *rq,
 		dst_nt_prev_runnable_sum = &rq->wrq.nt_prev_runnable_sum;
 
 		if (*src_curr_runnable_sum < p->wts.curr_window) {
-			printk_deferred("WALT-UG pid=%u CPU=%d event=%d src_crs=%llu is lesser than task_contrib=%llu",
+			walt_underflow_printk("WALT-UG pid=%u CPU=%d event=%d src_crs=%llu is lesser than task_contrib=%llu",
 					p->pid, cpu, event, *src_curr_runnable_sum,
 					p->wts.curr_window);
-			walt_task_dump(p);
-			SCHED_BUG_ON(1);
+			/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+			*src_curr_runnable_sum = p->wts.curr_window;
 		}
 		*src_curr_runnable_sum -= p->wts.curr_window;
 
 		if (*src_prev_runnable_sum < p->wts.prev_window) {
-			printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_prs=%llu is lesser than task_contrib=%llu",
+			walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_prs=%llu is lesser than task_contrib=%llu",
 					p->pid, cpu, event, *src_prev_runnable_sum,
 					p->wts.prev_window);
-			walt_task_dump(p);
-			SCHED_BUG_ON(1);
+			/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+			*src_prev_runnable_sum = p->wts.prev_window;
 		}
 		*src_prev_runnable_sum -= p->wts.prev_window;
 
 		if (new_task) {
 			if (*src_nt_curr_runnable_sum < p->wts.curr_window) {
-				printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_nt_crs=%llu is lesser than task_contrib=%llu",
+				walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_nt_crs=%llu is lesser than task_contrib=%llu",
 						p->pid, cpu, event,
 						*src_nt_curr_runnable_sum,
 						p->wts.curr_window);
-				walt_task_dump(p);
-				SCHED_BUG_ON(1);
+				/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+				*src_nt_curr_runnable_sum = p->wts.curr_window;
 			}
 			*src_nt_curr_runnable_sum -= p->wts.curr_window;
 
 			if (*src_nt_prev_runnable_sum < p->wts.prev_window) {
-				printk_deferred("WALT-BUG pid=%u CPU=%d event=%d src_nt_prs=%llu is lesser than task_contrib=%llu",
+				walt_underflow_printk("WALT-BUG pid=%u CPU=%d event=%d src_nt_prs=%llu is lesser than task_contrib=%llu",
 						p->pid, cpu, event,
 						*src_nt_prev_runnable_sum,
 						p->wts.prev_window);
-				walt_task_dump(p);
-				SCHED_BUG_ON(1);
+				/* Clamp: the subtraction below then yields 0 instead of BUG(). */
+				*src_nt_prev_runnable_sum = p->wts.prev_window;
 			}
 			*src_nt_prev_runnable_sum -= p->wts.prev_window;
 		}
